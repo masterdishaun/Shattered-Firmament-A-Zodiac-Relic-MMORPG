@@ -22,6 +22,11 @@ const FACTION_START_MAPS = {
   ashen_syndicate: "cinderwake",
   astral_concord: "luminous_veil",
 } as const;
+const FACTION_START_POSITIONS = {
+  sovereign_sect: { x: -22, y: 4 },
+  ashen_syndicate: { x: 0, y: 4 },
+  astral_concord: { x: 22, y: 4 },
+} as const;
 const ARCHETYPE_IDS = ["vanguard", "mystic", "support"] as const;
 const FACTION_IDS = [
   "sovereign_sect",
@@ -461,7 +466,9 @@ export const createApp = (
       const result = await pool!.query(
         `SELECT id, name, class_id AS "classId", faction_id AS "factionId",
                 level, experience, cultivation_realm AS "cultivationRealm",
-                active_map_id AS "mapId", health, max_health AS "maxHealth",
+                active_map_id AS "mapId",
+                json_build_object('x', position_x, 'y', position_y, 'facing', facing) AS position,
+                health, max_health AS "maxHealth",
                 created_at AS "createdAt", last_played_at AS "lastPlayedAt"
          FROM characters
          WHERE user_id = $1 AND status = 'active'
@@ -506,14 +513,17 @@ export const createApp = (
       if (!auth) return;
       const name = request.body.name.trim().replace(/\s+/g, " ");
       const mapId = FACTION_START_MAPS[request.body.factionId];
+      const startPosition = FACTION_START_POSITIONS[request.body.factionId];
       try {
         const result = await pool!.query(
           `INSERT INTO characters
-            (id, user_id, name, class_id, faction_id, active_map_id)
-           VALUES ($1, $2, $3, $4, $5, $6)
+            (id, user_id, name, class_id, faction_id, active_map_id, position_x, position_y)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            RETURNING id, name, class_id AS "classId", faction_id AS "factionId",
                      level, experience, cultivation_realm AS "cultivationRealm",
-                     active_map_id AS "mapId", health, max_health AS "maxHealth",
+                     active_map_id AS "mapId",
+                     json_build_object('x', position_x, 'y', position_y, 'facing', facing) AS position,
+                     health, max_health AS "maxHealth",
                      created_at AS "createdAt"`,
           [
             randomUUID(),
@@ -522,6 +532,8 @@ export const createApp = (
             request.body.classId,
             request.body.factionId,
             mapId,
+            startPosition.x,
+            startPosition.y,
           ],
         );
         return reply.code(201).send({ character: result.rows[0] });

@@ -149,3 +149,12 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Adapted the client connection probe for the current Colyseus 0.16 transport, and removed logs that exposed reconnection tokens, session IDs, WebSocket URLs or complete room payloads.
 - End-to-end verified with a disposable PostgreSQL 17 cluster and the local API/game server: register, refresh-token rotation, authenticated account lookup, faction-bound character creation, join-ticket request, WebSocket matchmaking, room admission, S2C_RoomJoinSuccess, logout and room disconnect all passed.
 - Scope remains a room handshake only. Authoritative movement, input validation, state snapshots/replication, reconnect recovery and load testing remain open.
+
+## Progress log - Phase 10 authoritative movement
+
+- Added shared move-intent and world-snapshot contracts and JSON Schemas. Runtime movement validation rejects non-finite/out-of-range axes, non-monotonic sequences and extra client-authored speed/position fields.
+- Added a fixed 20 Hz server simulation, normalized movement, server-derived facing, bounded world coordinates, per-client rate/invalid-input limits and S2C_WorldSnapshot broadcasts.
+- Added five-second PostgreSQL position checkpoints and position persistence on room exit. Character creation now seeds server-owned positions at the three faction start pads.
+- Godot sends only movement axes and sequence numbers while connected, stops local movement simulation, and interpolates the avatar toward authoritative snapshots.
+- End-to-end test passed against disposable PostgreSQL 17 plus the local API/Colyseus server: account lifecycle, faction spawn, one-time ticket, room handshake, snapshot receipt, server-side movement, position persistence after disconnect, and logout. Server unit tests cover invalid inputs, speed normalization, bounds and safe time steps.
+- Still open: remote player rendering, prediction/reconciliation, per-zone collision/transition checks, PvP/combat, reconnect recovery, and production load/security testing.

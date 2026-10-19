@@ -107,4 +107,12 @@ The current main scene generates a primitive 3D/isometric-style blockout at runt
 
 The official Colyseus native Godot SDK 0.18.7 was rejected after the Godot 4.7.2 headless editor exited with Windows access violation 0xC0000005 during shutdown. The repository instead vendors the MIT-licensed pure-GDScript client in client/addons/colyseus, pinned to upstream commit f17b084414a65e88b822cebdaa285cf9e1b80556; see its UPSTREAM.md for local patches and compatibility limits.
 
-The end-to-end test verified the current client against the project's Colyseus 0.16.x server: HTTP matchmaking, WebSocket room admission, atomic one-time ticket consumption and receipt of S2C_RoomJoinSuccess. This does not yet validate schema state serialization, reconnect recovery, multi-process deployment or movement snapshots. Client movement remains local-only.
+The end-to-end test verified the current client against the project's Colyseus 0.16.x server: HTTP matchmaking, WebSocket room admission, atomic one-time ticket consumption and receipt of S2C_RoomJoinSuccess. Schema state serialization is not used; the room sends explicit JSON snapshots. Reconnect recovery and multi-process deployment remain open.
+
+## Authoritative movement and snapshots
+
+- The world room runs a fixed 20 Hz simulation. Clients send C2S_MoveIntent messages containing only a monotonically increasing sequence and axisX/axisY values in [-1, 1]. Client-provided position, speed and delta time are not accepted.
+- The server validates message shape, sequence ordering, finite/bounded axes and input rate; normalizes diagonal movement, clamps positions to the blockout bounds (x [-32, 32], y [-12, 12]), and derives facing server-side.
+- Every simulation tick, the room broadcasts S2C_WorldSnapshot with server tick/time and the current player positions, facing, movement sequence and health. Godot interpolates its local avatar toward the authoritative snapshots and stops local movement simulation while connected.
+- Character positions are checkpointed to PostgreSQL every five seconds and persisted again on room exit. The end-to-end test verifies movement changes on server snapshots and that the position is restored from PostgreSQL after disconnect.
+- This is an initial single-room movement slice, not the complete world simulation. Per-zone collision and transitions, faction PvP boundaries, remote avatar rendering, client prediction/reconciliation, combat, movement anti-cheat telemetry and load tests remain open.

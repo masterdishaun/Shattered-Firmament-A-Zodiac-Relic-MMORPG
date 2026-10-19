@@ -83,7 +83,8 @@ func _trigger_callbacks(changes: Array) -> void:
 
 # Internal callback from ColyseusClient when ROOM_DATA is received
 func _on_message(type, data = null) -> void:
-	print("[Room] Received typed room message: %s" % str(type))
+	if str(type) != "S2C_WorldSnapshot":
+		print("[Room] Received typed room message: %s" % str(type))
 	message_received.emit(type, data)
 
 # Internal callback from ColyseusClient when ROOM_DATA_BYTES is received

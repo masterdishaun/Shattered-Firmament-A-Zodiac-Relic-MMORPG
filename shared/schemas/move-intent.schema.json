@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shattered-firmament.invalid/schemas/move-intent.schema.json",
+  "title": "Client Move Intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sequence", "axisX", "axisY"],
+  "properties": {
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "axisX": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1
+    },
+    "axisY": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1
+    }
+  }
+}

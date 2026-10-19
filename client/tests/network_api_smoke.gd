@@ -84,6 +84,42 @@ func _run_api_smoke() -> void:
 		_fail("Godot did not receive the S2C_RoomJoinSuccess welcome message.")
 		return
 
+	var character_id := String(ticketed_characters[0].get("id", ""))
+	var initial_x := -999.0
+	for _frame in range(180):
+		for player_state in network_panel.last_world_snapshot.get("players", []):
+			if String(player_state.get("characterId", "")) == character_id:
+				var initial_position: Dictionary = player_state.get("position", {})
+				initial_x = float(initial_position.get("x", -999.0))
+				break
+		if initial_x > -900.0:
+			break
+		await process_frame
+	if initial_x < -900.0:
+		_fail("The server did not send an initial authoritative world snapshot.")
+		return
+	if not is_equal_approx(initial_x, 22.0):
+		_fail("The Astral Concord server spawn position was incorrect: %s" % str(initial_x))
+		return
+
+	for _intent in range(12):
+		network_panel.send_move_intent(1.0, 0.0)
+		await create_timer(0.05).timeout
+	var moved_authoritatively := false
+	for _frame in range(300):
+		for player_state in network_panel.last_world_snapshot.get("players", []):
+			if String(player_state.get("characterId", "")) == character_id:
+				var current_position: Dictionary = player_state.get("position", {})
+				if float(current_position.get("x", initial_x)) > initial_x + 0.5:
+					moved_authoritatively = true
+					break
+		if moved_authoritatively:
+			break
+		await process_frame
+	if not moved_authoritatively:
+		_fail("The server did not move the character after validated movement intents.")
+		return
+
 	network_panel._logout()
 	if not await _wait_for_panel_idle():
 		_fail("Logout did not complete.")
@@ -94,6 +130,7 @@ func _run_api_smoke() -> void:
 	if network_panel.world_connected:
 		_fail("Logout did not disconnect the Colyseus room client.")
 		return
+	await create_timer(0.25).timeout
 
 	network_panel.identifier_input.text = username
 	network_panel.password_input.text = TEST_PASSWORD
@@ -103,6 +140,13 @@ func _run_api_smoke() -> void:
 		return
 	if network_panel.current_user.get("username") != username:
 		_fail("The online panel did not log in by username.")
+		return
+	if network_panel.characters.size() != 1:
+		_fail("The character list was not restored after login.")
+		return
+	var saved_position: Dictionary = network_panel.characters[0].get("position", {})
+	if float(saved_position.get("x", initial_x)) <= initial_x + 0.5:
+		_fail("The server did not persist the authoritative movement position on room exit.")
 		return
 
 	network_panel._logout()

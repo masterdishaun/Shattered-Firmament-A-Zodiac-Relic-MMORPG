@@ -42,6 +42,11 @@ var prompt_label: Label
 var feedback_label: Label
 var hud_root: Control
 var network_panel: Control
+var active_character_id := ""
+var last_applied_snapshot_tick := 0
+var has_authoritative_snapshot := false
+var authoritative_target_position := Vector3.ZERO
+var authoritative_target_facing := 0.0
 var nearby_relic_index := -1
 var inspected_relics: Dictionary = {}
 var hud_refresh_elapsed := 0.0
@@ -60,6 +65,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if player == null or camera == null:
 		return
+	if network_panel != null and network_panel.world_connected and has_authoritative_snapshot:
+		var blend := minf(1.0, delta * 18.0)
+		player.global_position = player.global_position.lerp(authoritative_target_position, blend)
+		player.rotation.y = lerp_angle(player.rotation.y, authoritative_target_facing, blend)
 	camera.global_position = player.global_position + CAMERA_OFFSET
 	camera.look_at(player.global_position + Vector3(0.0, 0.8, 0.0), Vector3.UP)
 	hud_refresh_elapsed += delta
@@ -93,8 +102,14 @@ func _physics_process(delta: float) -> void:
 	var direction := camera_right * input_vector.x + camera_forward * input_vector.y
 	if direction.length_squared() > 0.001:
 		direction = direction.normalized()
-		player.rotation.y = atan2(direction.x, direction.z)
 
+	if network_panel != null and network_panel.world_connected:
+		network_panel.send_move_intent(direction.x, direction.z)
+		player.velocity = Vector3.ZERO
+		return
+
+	if direction.length_squared() > 0.001:
+		player.rotation.y = atan2(direction.x, direction.z)
 	player.velocity.x = direction.x * MOVE_SPEED
 	player.velocity.z = direction.z * MOVE_SPEED
 	if not player.is_on_floor():
@@ -110,11 +125,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	match event.keycode:
 		KEY_1:
-			_move_to_faction_start(0)
+			if network_panel == null or not network_panel.world_connected:
+				_move_to_faction_start(0)
 		KEY_2:
-			_move_to_faction_start(1)
+			if network_panel == null or not network_panel.world_connected:
+				_move_to_faction_start(1)
 		KEY_3:
-			_move_to_faction_start(2)
+			if network_panel == null or not network_panel.world_connected:
+				_move_to_faction_start(2)
 		KEY_E:
 			_interact_with_relic()
 
@@ -400,6 +418,7 @@ func _toggle_network_panel() -> void:
 		network_panel.status_changed.connect(_on_network_status_changed)
 		network_panel.character_ticketed.connect(_on_character_ticketed)
 		network_panel.world_joined.connect(_on_world_joined)
+		network_panel.world_snapshot.connect(_on_world_snapshot)
 		network_panel.close_requested.connect(_close_network_panel)
 	network_panel.visible = not network_panel.visible
 
@@ -410,7 +429,41 @@ func _close_network_panel() -> void:
 
 
 func _on_world_joined(character: Dictionary) -> void:
-	feedback_label.text = "Server room handshake confirmed for %s. Character movement is still local-only in this prototype." % String(character.get("name", "character"))
+	active_character_id = String(character.get("characterId", active_character_id))
+	var position: Dictionary = character.get("position", {})
+	if position.has("x") and position.has("y"):
+		player.global_position = Vector3(float(position["x"]), 0.04, float(position["y"]))
+		player.velocity = Vector3.ZERO
+		player.rotation.y = float(position.get("facing", 0.0))
+		authoritative_target_position = player.global_position
+		authoritative_target_facing = player.rotation.y
+	has_authoritative_snapshot = false
+	last_applied_snapshot_tick = 0
+	feedback_label.text = "Server room handshake confirmed for %s. Authoritative movement is active; combat is not implemented yet." % String(character.get("name", "character"))
+
+
+func _on_world_snapshot(snapshot: Dictionary) -> void:
+	var server_tick := int(snapshot.get("serverTick", 0))
+	if server_tick <= last_applied_snapshot_tick:
+		return
+	last_applied_snapshot_tick = server_tick
+	for state in snapshot.get("players", []):
+		if not state is Dictionary or String(state.get("characterId", "")) != active_character_id:
+			continue
+		var position: Dictionary = state.get("position", {})
+		if not position.has("x") or not position.has("y"):
+			return
+		authoritative_target_position = Vector3(
+			float(position["x"]),
+			player.global_position.y,
+			float(position["y"])
+		)
+		authoritative_target_facing = float(position.get("facing", 0.0))
+		if not has_authoritative_snapshot:
+			player.global_position = authoritative_target_position
+			player.rotation.y = authoritative_target_facing
+			has_authoritative_snapshot = true
+		return
 
 
 func _on_network_status_changed(message: String) -> void:
@@ -418,6 +471,7 @@ func _on_network_status_changed(message: String) -> void:
 
 
 func _on_character_ticketed(character: Dictionary) -> void:
+	active_character_id = String(character.get("id", ""))
 	var map_id: String = String(character.get("mapId", ""))
 	var map_to_faction := {
 		"white_jade_bastion": 0,
@@ -425,8 +479,16 @@ func _on_character_ticketed(character: Dictionary) -> void:
 		"luminous_veil": 2
 	}
 	if map_to_faction.has(map_id):
-		_move_to_faction_start(map_to_faction[map_id])
-	feedback_label.text = "Server issued a short-lived ticket for %s. Local blockout moved to %s; live room connection is pending SDK compatibility." % [
+		selected_faction_index = map_to_faction[map_id]
+	var position: Dictionary = character.get("position", {})
+	if position.has("x") and position.has("y"):
+		player.global_position = Vector3(float(position["x"]), 0.04, float(position["y"]))
+		player.velocity = Vector3.ZERO
+		player.rotation.y = float(position.get("facing", 0.0))
+	else:
+		_move_to_faction_start(selected_faction_index)
+	has_authoritative_snapshot = false
+	feedback_label.text = "Server issued a short-lived ticket for %s in %s. Connecting to the authoritative world..." % [
 		String(character.get("name", "character")),
 		map_id
 	]

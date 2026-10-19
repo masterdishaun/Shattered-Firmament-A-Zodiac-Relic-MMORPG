@@ -52,4 +52,11 @@ Schemas validate data shape, not gameplay authority. The server must still valid
 
 ## Known gaps
 
-This phase does not yet define all runtime contracts. Inventory item-instance and trade-offer schemas, skills/effects, encounter spawn placement, localization keys, content-version migration, and runtime schema-loading integration remain future work. Sample encounter statistics and progression estimates are placeholders for later simulation and playtesting.
+This phase does not yet define all runtime contracts. Skills/effects, encounter spawn placement, localization keys, content-version migration, and runtime schema-loading integration remain future work. Sample encounter statistics and progression estimates are placeholders for later simulation and playtesting.
+
+## Network movement contracts
+
+- move-intent.schema.json defines the client input payload; it explicitly excludes client-authored position, speed and delta time.
+- world-snapshot.schema.json defines the versioned S2C_WorldSnapshot envelope and bounded player positions.
+- shared/src/protocol.ts exports the TypeScript message contracts; server/src/movement.ts owns runtime validation and deterministic fixed-step movement.
+- Schema tests validate valid payloads and reject out-of-bounds values and extra client-authored movement properties.

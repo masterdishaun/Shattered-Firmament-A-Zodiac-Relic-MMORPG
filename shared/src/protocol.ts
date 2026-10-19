@@ -46,3 +46,29 @@ export interface RoomJoinSuccess {
     serverTime: string;
   };
 }
+
+export interface ClientMoveIntent {
+  sequence: number;
+  axisX: number;
+  axisY: number;
+}
+
+export interface WorldPlayerSnapshot {
+  characterId: string;
+  name: string;
+  mapId: string;
+  position: { x: number; y: number; facing: number };
+  movementSequence: number;
+  health: number;
+  maxHealth: number;
+}
+
+export interface WorldSnapshotEnvelope {
+  type: "S2C_WorldSnapshot";
+  protocolVersion: typeof PROTOCOL_VERSION;
+  payload: {
+    serverTick: number;
+    serverTime: string;
+    players: WorldPlayerSnapshot[];
+  };
+}

@@ -3,6 +3,7 @@ extends Control
 signal status_changed(message: String)
 signal character_ticketed(character: Dictionary)
 signal world_joined(character: Dictionary)
+signal world_snapshot(snapshot: Dictionary)
 signal close_requested
 
 var access_token := ""
@@ -15,6 +16,9 @@ var pending_join_ticket := ""
 var game_client: Node
 var game_room: RefCounted
 var world_connected := false
+var last_world_snapshot: Dictionary = {}
+var movement_sequence := 0
+var last_move_sent_at_ms := 0
 
 var api_url_input: LineEdit
 var game_url_input: LineEdit
@@ -433,19 +437,43 @@ func _on_room_joined() -> void:
 
 
 func _on_room_message(message_type: Variant, data: Variant) -> void:
-	if String(message_type) != "S2C_RoomJoinSuccess":
-		return
+	var message_name := String(message_type)
 	var envelope: Dictionary = data if data is Dictionary else {}
 	var payload: Dictionary = envelope.get("payload", {})
+	if message_name == "S2C_WorldSnapshot":
+		last_world_snapshot = payload
+		world_snapshot.emit(payload)
+		return
+	if message_name != "S2C_RoomJoinSuccess":
+		return
 	var character: Dictionary = payload.get("character", {})
 	world_connected = true
 	world_joined.emit(character)
 	_set_status(
-		"Connected to Colyseus room %s as %s. Network admission works; movement and snapshots are still local-only."
+		"Connected to Colyseus room %s as %s. Movement is server-authoritative; combat is not implemented yet."
 		% [
 			String(payload.get("roomId", "unknown")),
 			String(character.get("name", "character"))
 		]
+	)
+
+
+func send_move_intent(axis_x: float, axis_y: float) -> void:
+	if not world_connected or game_room == null:
+		return
+	var now := Time.get_ticks_msec()
+	if now - last_move_sent_at_ms < 50:
+		return
+	last_move_sent_at_ms = now
+	movement_sequence += 1
+	game_room.call(
+		"send",
+		"C2S_MoveIntent",
+		{
+			"sequence": movement_sequence,
+			"axisX": clampf(axis_x, -1.0, 1.0),
+			"axisY": clampf(axis_y, -1.0, 1.0)
+		}
 	)
 
 
@@ -473,6 +501,9 @@ func _disconnect_game_client(clear_ticket: bool = true) -> void:
 	if clear_ticket:
 		pending_join_ticket = ""
 	world_connected = false
+	last_world_snapshot.clear()
+	movement_sequence = 0
+	last_move_sent_at_ms = 0
 	game_room = null
 	if game_client != null:
 		if game_client.has_method("close_connection"):
