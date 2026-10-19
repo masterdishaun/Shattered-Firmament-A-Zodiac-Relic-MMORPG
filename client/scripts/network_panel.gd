@@ -22,6 +22,7 @@ var current_map_id := ""
 var current_zone_rules: Dictionary = {}
 var movement_sequence := 0
 var last_move_sent_at_ms := 0
+var pending_move_intents: Array[Dictionary] = []
 
 var api_url_input: LineEdit
 var game_url_input: LineEdit
@@ -477,23 +478,32 @@ func request_zone_transition(target_map_id: String) -> void:
 	game_room.call("send", "C2S_ZoneTransition", {"targetMapId": target_map_id})
 
 
-func send_move_intent(axis_x: float, axis_y: float) -> void:
+func send_move_intent(axis_x: float, axis_y: float) -> int:
 	if not world_connected or game_room == null:
-		return
-	var now := Time.get_ticks_msec()
-	if now - last_move_sent_at_ms < 50:
-		return
-	last_move_sent_at_ms = now
+		return 0
 	movement_sequence += 1
-	game_room.call(
-		"send",
-		"C2S_MoveIntent",
-		{
-			"sequence": movement_sequence,
-			"axisX": clampf(axis_x, -1.0, 1.0),
-			"axisY": clampf(axis_y, -1.0, 1.0)
-		}
-	)
+	var intent := {
+		"sequence": movement_sequence,
+		"axisX": clampf(axis_x, -1.0, 1.0),
+		"axisY": clampf(axis_y, -1.0, 1.0)
+	}
+	pending_move_intents.append(intent)
+	# Bound memory if a server stops acknowledging snapshots; a disconnect resets the queue.
+	if pending_move_intents.size() > 128:
+		pending_move_intents.pop_front()
+	game_room.call("send", "C2S_MoveIntent", intent)
+	last_move_sent_at_ms = Time.get_ticks_msec()
+	return movement_sequence
+
+
+func acknowledge_move_intents(acknowledged_sequence: int) -> Array[Dictionary]:
+	while not pending_move_intents.is_empty() and int(pending_move_intents[0].get("sequence", 0)) <= acknowledged_sequence:
+		pending_move_intents.pop_front()
+	return pending_move_intents.duplicate(true)
+
+
+func clear_pending_move_intents() -> void:
+	pending_move_intents.clear()
 
 
 func _on_game_client_error(code: int, message: String) -> void:
@@ -523,6 +533,7 @@ func _disconnect_game_client(clear_ticket: bool = true) -> void:
 	last_world_snapshot.clear()
 	movement_sequence = 0
 	last_move_sent_at_ms = 0
+	pending_move_intents.clear()
 	game_room = null
 	if game_client != null:
 		if game_client.has_method("close_connection"):

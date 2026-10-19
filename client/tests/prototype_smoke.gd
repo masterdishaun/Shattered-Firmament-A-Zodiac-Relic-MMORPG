@@ -10,6 +10,23 @@ func _run_smoke_test() -> void:
 		_fail("Main scene could not be loaded.")
 		return
 
+	var predicted_start := Vector3.ZERO
+	var predicted_once: Vector3 = MovementPrediction.step_position(predicted_start, 1.0, 0.0)
+	if not is_equal_approx(predicted_once.x, 0.3):
+		_fail("Client movement prediction did not match one 20 Hz server tick.")
+		return
+	var predicted_diagonal: Vector3 = MovementPrediction.step_position(Vector3.ZERO, 1.0, 1.0)
+	if not is_equal_approx(predicted_diagonal.length(), 0.3):
+		_fail("Client movement prediction did not normalize diagonal speed.")
+		return
+	var replayed: Vector3 = MovementPrediction.reconcile_position(Vector3(1.0, 0.04, 2.0), [
+		{"sequence": 2, "axisX": 1.0, "axisY": 0.0},
+		{"sequence": 3, "axisX": 0.0, "axisY": 1.0}
+	])
+	if not is_equal_approx(replayed.x, 1.3) or not is_equal_approx(replayed.z, 2.3):
+		_fail("Reconciliation did not replay unacknowledged movement inputs.")
+		return
+
 	var scene: Node3D = packed_scene.instantiate()
 	root.add_child(scene)
 	await process_frame
@@ -35,6 +52,45 @@ func _run_smoke_test() -> void:
 		_fail("The online account panel did not open from the prototype HUD.")
 		return
 	scene._close_network_panel()
+
+	# Acknowledged input is discarded; newer input is replayed over the server position.
+	scene.active_character_id = "local-prediction-smoke"
+	scene.network_panel.pending_move_intents.clear()
+	scene.network_panel.pending_move_intents.append({"sequence": 1, "axisX": 0.0, "axisY": 0.0})
+	scene.network_panel.pending_move_intents.append({"sequence": 2, "axisX": 1.0, "axisY": 0.0})
+	scene.network_panel.pending_move_intents.append({"sequence": 3, "axisX": 0.0, "axisY": 1.0})
+	scene._on_world_snapshot({
+		"serverTick": 1,
+		"players": [{
+			"characterId": "local-prediction-smoke",
+			"mapId": "white_jade_bastion",
+			"position": {"x": 1.0, "y": 2.0, "facing": 0.0},
+			"movementSequence": 1,
+			"health": 100,
+			"maxHealth": 100
+		}]
+	})
+	if scene.network_panel.pending_move_intents.size() != 2:
+		_fail("Reconciliation did not preserve inputs newer than the server acknowledgement.")
+		return
+	if not is_equal_approx(scene.predicted_position.x, 1.3) or not is_equal_approx(scene.predicted_position.z, 2.3):
+		_fail("The local predicted position did not reconcile from the server snapshot plus pending inputs.")
+		return
+	scene.network_panel.pending_move_intents.clear()
+	scene.network_panel.pending_move_intents.append({"sequence": 4, "axisX": 1.0, "axisY": 0.0})
+	scene._on_zone_changed({
+		"mapId": "zone.neutral-crossroads",
+		"position": {"x": 0.0, "y": 20.0, "facing": 0.0},
+		"safeZone": true,
+		"pvpEnabled": false
+	})
+	if not scene.network_panel.pending_move_intents.is_empty():
+		_fail("A zone transition did not discard pre-transition predicted inputs.")
+		return
+	if not is_equal_approx(scene.predicted_position.z, 20.0):
+		_fail("A zone transition did not reset prediction to the server-assigned spawn.")
+		return
+	scene.active_character_id = ""
 
 	if not scene.camera.current or scene.camera.projection != Camera3D.PROJECTION_ORTHOGONAL:
 		_fail("The isometric follow camera is not configured as expected.")

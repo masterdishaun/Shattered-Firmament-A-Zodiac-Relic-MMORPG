@@ -2,6 +2,8 @@ extends Node3D
 
 const MOVE_SPEED := 6.0
 const GRAVITY := 18.0
+const CLIENT_PREDICTION_TICK := 0.05
+const MovementPredictionScript = preload("res://scripts/movement_prediction.gd")
 const CAMERA_OFFSET := Vector3(9.0, 12.0, 9.0)
 
 const FACTIONS: Array[Dictionary] = [
@@ -49,6 +51,9 @@ var last_applied_snapshot_tick := 0
 var has_authoritative_snapshot := false
 var authoritative_target_position := Vector3.ZERO
 var authoritative_target_facing := 0.0
+var predicted_position := Vector3.ZERO
+var correction_offset := Vector3.ZERO
+var prediction_accumulator := 0.0
 var nearby_relic_index := -1
 var inspected_relics: Dictionary = {}
 var hud_refresh_elapsed := 0.0
@@ -69,8 +74,8 @@ func _process(delta: float) -> void:
 		return
 	var blend := minf(1.0, delta * 18.0)
 	if network_panel != null and network_panel.world_connected and has_authoritative_snapshot:
-		player.global_position = player.global_position.lerp(authoritative_target_position, blend)
-		player.rotation.y = lerp_angle(player.rotation.y, authoritative_target_facing, blend)
+		correction_offset = correction_offset.lerp(Vector3.ZERO, minf(1.0, delta * 12.0))
+		player.global_position = predicted_position + correction_offset
 	for character_id in remote_targets:
 		var avatar: Node3D = remote_avatars.get(character_id)
 		var target: Dictionary = remote_targets[character_id]
@@ -113,7 +118,19 @@ func _physics_process(delta: float) -> void:
 		direction = direction.normalized()
 
 	if network_panel != null and network_panel.world_connected:
-		network_panel.send_move_intent(direction.x, direction.z)
+		prediction_accumulator += minf(delta, 0.1)
+		var prediction_steps := 0
+		while prediction_accumulator >= CLIENT_PREDICTION_TICK and prediction_steps < 4:
+			var sequence: int = network_panel.send_move_intent(direction.x, direction.z)
+			if sequence > 0:
+				predicted_position = MovementPredictionScript.step_position(
+					predicted_position, direction.x, direction.z, CLIENT_PREDICTION_TICK
+				)
+				if direction.length_squared() > 0.001:
+					player.rotation.y = atan2(direction.x, direction.z)
+			prediction_accumulator -= CLIENT_PREDICTION_TICK
+			prediction_steps += 1
+		player.global_position = predicted_position + correction_offset
 		player.velocity = Vector3.ZERO
 		return
 
@@ -466,19 +483,27 @@ func _on_world_joined(character: Dictionary) -> void:
 		player.global_position = Vector3(float(position["x"]), 0.04, float(position["y"]))
 		player.velocity = Vector3.ZERO
 		player.rotation.y = float(position.get("facing", 0.0))
+		predicted_position = player.global_position
+		correction_offset = Vector3.ZERO
 		authoritative_target_position = player.global_position
 		authoritative_target_facing = player.rotation.y
 	has_authoritative_snapshot = false
+	prediction_accumulator = 0.0
 	last_applied_snapshot_tick = 0
 	feedback_label.text = "Server room handshake confirmed for %s. Authoritative movement is active; combat is not implemented yet." % String(character.get("name", "character"))
 
 
 func _on_zone_changed(zone: Dictionary) -> void:
+	if network_panel != null and network_panel.has_method("clear_pending_move_intents"):
+		network_panel.clear_pending_move_intents()
 	var position: Dictionary = zone.get("position", {})
 	if position.has("x") and position.has("y"):
 		authoritative_target_position = Vector3(float(position["x"]), 0.04, float(position["y"]))
-		player.global_position = authoritative_target_position
+		predicted_position = authoritative_target_position
+		correction_offset = Vector3.ZERO
+		player.global_position = predicted_position
 		has_authoritative_snapshot = true
+		prediction_accumulator = 0.0
 	_clear_remote_avatars()
 
 
@@ -494,18 +519,32 @@ func _on_world_snapshot(snapshot: Dictionary) -> void:
 		var position: Dictionary = state.get("position", {})
 		if not position.has("x") or not position.has("y"):
 			return
-		authoritative_target_position = Vector3(
+		var authoritative := Vector3(
 			float(position["x"]),
-			player.global_position.y,
+			0.04,
 			float(position["y"])
 		)
+		authoritative_target_position = authoritative
 		authoritative_target_facing = float(position.get("facing", 0.0))
-		if not has_authoritative_snapshot:
-			player.global_position = authoritative_target_position
+		var acknowledged_sequence := int(state.get("movementSequence", 0))
+		var pending: Array = []
+		if network_panel != null and network_panel.has_method("acknowledge_move_intents"):
+			pending = network_panel.acknowledge_move_intents(acknowledged_sequence)
+		var reconciled: Vector3 = MovementPredictionScript.reconcile_position(authoritative, pending)
+		var rendered_before_correction := player.global_position
+		var correction_distance := predicted_position.distance_to(reconciled)
+		predicted_position = reconciled
+		if correction_distance > 2.0:
+			# Large corrections are authoritative (collision, zone edge or stale input).
+			correction_offset = Vector3.ZERO
+		else:
+			# Preserve visual continuity while the corrected simulation state catches up.
+			correction_offset = rendered_before_correction - predicted_position
+		if pending.is_empty():
 			player.rotation.y = authoritative_target_facing
-			has_authoritative_snapshot = true
+		player.global_position = predicted_position + correction_offset
+		has_authoritative_snapshot = true
 		return
-
 
 
 func _update_remote_avatars(snapshot: Dictionary) -> void:
