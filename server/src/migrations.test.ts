@@ -78,6 +78,13 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
       );
     }
 
+    const leaseColumns = await pool.query<{ column_name: string }>(
+      "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'active_character_leases'",
+    );
+    expect(leaseColumns.rows.map((row) => row.column_name)).toContain(
+      "disconnected_at",
+    );
+
     const second = await runMigrations(pool);
     expect(second.applied).toEqual([]);
     expect(second.skipped).toContain("0001_initial.sql");

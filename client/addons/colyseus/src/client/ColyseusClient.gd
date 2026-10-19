@@ -221,10 +221,12 @@ func _process(_delta: float) -> void:
 			_ws_connecting = false
 			_ws_connected = true
 		elif ws_state == WebSocketPeer.STATE_CLOSED:
-			print("[ColyseusSDK] WebSocket connection failed")
+			var close_code := _socket.get_close_code()
+			var close_reason := _socket.get_close_reason()
+			print("[ColyseusSDK] WebSocket connection failed (close code %d, reason: %s)" % [close_code, close_reason])
 			_ws_connecting = false
 			_socket = null
-			error.emit(0, "WebSocket connection failed")
+			error.emit(close_code, "WebSocket connection failed")
 			return
 
 	if _ws_connected:

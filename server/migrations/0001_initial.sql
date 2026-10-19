@@ -193,6 +193,7 @@ CREATE TABLE active_character_leases (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   session_id UUID NOT NULL,
   lease_expires_at TIMESTAMPTZ NOT NULL,
+  disconnected_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   FOREIGN KEY (character_id, user_id) REFERENCES characters(id, user_id) ON DELETE CASCADE,
   FOREIGN KEY (session_id, user_id) REFERENCES auth_sessions(id, user_id) ON DELETE CASCADE

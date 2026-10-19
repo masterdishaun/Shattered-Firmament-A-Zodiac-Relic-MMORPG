@@ -5,7 +5,11 @@ import { Pool } from "pg";
 import { createApp, type ShatteredFirmamentApp } from "./app.js";
 import { runMigrations } from "./migrations.js";
 import { hashOpaqueToken } from "./security.js";
-import { consumeJoinTicket, extendCharacterLease } from "./join-tickets.js";
+import {
+  consumeJoinTicket,
+  deferCharacterLeaseRelease,
+  extendCharacterLease,
+} from "./join-tickets.js";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 const databaseSuite = testDatabaseUrl ? describe : describe.skip;
@@ -187,6 +191,22 @@ databaseSuite("authentication and character API integration", () => {
     await expect(
       consumeJoinTicket(migrationPool, secondSelection.json().joinTicket),
     ).rejects.toMatchObject({ code: "CHARACTER_ALREADY_ACTIVE" });
+
+    // Disconnection opens a short grace window only for the same authenticated
+    // session; a second login still cannot take over the disconnected character.
+    await deferCharacterLeaseRelease(migrationPool, admitted);
+    await expect(
+      consumeJoinTicket(migrationPool, secondSelection.json().joinTicket),
+    ).rejects.toMatchObject({ code: "CHARACTER_ALREADY_ACTIVE" });
+    const resumed = await consumeJoinTicket(
+      migrationPool,
+      sameSessionSelection.json().joinTicket,
+    );
+    expect(resumed).toMatchObject({
+      userId: tokens.user.id,
+      sessionId: admitted.sessionId,
+      character: { id: character.id },
+    });
 
     const other = await registerAccount("other@example.test", "OtherPlayer");
     const foreignSelection = await service.app.inject({

@@ -23,6 +23,13 @@ var current_zone_rules: Dictionary = {}
 var movement_sequence := 0
 var last_move_sent_at_ms := 0
 var pending_move_intents: Array[Dictionary] = []
+var selected_character_id := ""
+var reconnect_enabled := false
+var reconnect_in_progress := false
+var reconnect_attempts := 0
+const MAX_RECONNECT_ATTEMPTS := 5
+var reconnect_timer: Timer
+var intentional_disconnect := false
 
 var api_url_input: LineEdit
 var game_url_input: LineEdit
@@ -45,6 +52,10 @@ func _ready() -> void:
 	http_request.timeout = 15.0
 	http_request.request_completed.connect(_on_request_completed)
 	add_child(http_request)
+	reconnect_timer = Timer.new()
+	reconnect_timer.one_shot = true
+	reconnect_timer.timeout.connect(_on_reconnect_timer_timeout)
+	add_child(reconnect_timer)
 
 
 func _build_panel() -> void:
@@ -308,6 +319,12 @@ func _logout() -> void:
 
 
 func _clear_session() -> void:
+	reconnect_enabled = false
+	reconnect_in_progress = false
+	reconnect_attempts = 0
+	selected_character_id = ""
+	if reconnect_timer != null:
+		reconnect_timer.stop()
 	_disconnect_game_client()
 	access_token = ""
 	refresh_token = ""
@@ -326,7 +343,16 @@ func _on_request_completed(
 	pending_action = ""
 	request_in_flight = false
 	if result != HTTPRequest.RESULT_SUCCESS:
-		_set_status("HTTP request failed (transport result %d)." % result)
+		if action == "reconnect_ticket":
+			reconnect_in_progress = false
+			_set_status("Reconnect ticket request lost its network response.")
+			_schedule_reconnect("ticket request transport failure")
+		elif action == "reconnect_refresh":
+			reconnect_in_progress = false
+			_set_status("Session refresh failed during reconnect. Sign in again.")
+			reconnect_enabled = false
+		else:
+			_set_status("HTTP request failed (transport result %d)." % result)
 		return
 
 	var data: Variant = null
@@ -336,19 +362,39 @@ func _on_request_completed(
 		var message := "Request failed with HTTP %d." % response_code
 		if data is Dictionary and data.has("error"):
 			message = String(data["error"].get("message", message))
-		_set_status(message)
+		if action == "reconnect_ticket" and response_code == 401 and not refresh_token.is_empty():
+			_attempt_reconnect_refresh()
+		elif action == "reconnect_ticket":
+			reconnect_in_progress = false
+			_set_status("Reconnect ticket request failed: %s" % message)
+			_schedule_reconnect("ticket request rejected")
+		elif action == "reconnect_refresh":
+			reconnect_in_progress = false
+			reconnect_enabled = false
+			_set_status("Your session could not be refreshed. Sign in again.")
+		else:
+			_set_status(message)
 		return
 
 	match action:
-		"register", "login", "refresh":
+		"register", "login", "refresh", "reconnect_refresh":
 			if not data is Dictionary or not data.has("accessToken"):
-				_set_status("The API response did not contain a valid session.")
+				if action == "reconnect_refresh":
+					reconnect_in_progress = false
+					reconnect_enabled = false
+					_set_status("Session refresh returned an invalid response. Sign in again.")
+				else:
+					_set_status("The API response did not contain a valid session.")
 				return
 			access_token = String(data["accessToken"])
 			refresh_token = String(data.get("refreshToken", refresh_token))
 			current_user = data.get("user", {})
-			_set_status("Signed in as %s." % String(current_user.get("username", "player")))
-			_fetch_characters()
+			if action == "reconnect_refresh":
+				_set_status("Session refreshed. Requesting a new world ticket...")
+				_request_reconnect_ticket()
+			else:
+				_set_status("Signed in as %s." % String(current_user.get("username", "player")))
+				_fetch_characters()
 		"characters":
 			characters.clear()
 			character_select.clear()
@@ -376,12 +422,20 @@ func _on_request_completed(
 				_fetch_characters()
 			else:
 				_set_status("The API did not return the created character.")
-		"select_character":
+		"select_character", "reconnect_ticket":
 			if not data is Dictionary or not data.has("joinTicket"):
-				_set_status("The API did not return a join ticket.")
+				if action == "reconnect_ticket":
+					reconnect_in_progress = false
+					_schedule_reconnect("invalid ticket response")
+				else:
+					_set_status("The API did not return a join ticket.")
 				return
 			pending_join_ticket = String(data["joinTicket"])
 			var character: Dictionary = data.get("character", {})
+			selected_character_id = String(character.get("id", selected_character_id))
+			if action == "select_character":
+				reconnect_enabled = true
+				reconnect_attempts = 0
 			character_ticketed.emit(character)
 			_set_status(
 				"Join ticket issued for %s in %s; expires at %s. Connecting to the world room..."
@@ -400,18 +454,23 @@ func _on_request_completed(
 
 func _connect_to_world() -> void:
 	var ticket_to_use := pending_join_ticket
-	_disconnect_game_client(false)
+	_disconnect_game_client(false, true)
 	pending_join_ticket = ticket_to_use
 	if pending_join_ticket.is_empty():
+		reconnect_in_progress = false
 		_set_status("Request a fresh join ticket before connecting to the world.")
 		return
 	var endpoint := game_url_input.text.strip_edges()
 	if not endpoint.begins_with("ws://") and not endpoint.begins_with("wss://"):
+		reconnect_in_progress = false
 		_set_status("Game URL must begin with ws:// or wss://.")
+		_schedule_reconnect("invalid WebSocket endpoint")
 		return
 	var client_script: Script = load("res://addons/colyseus/src/client/ColyseusClient.gd")
 	if client_script == null:
+		reconnect_in_progress = false
 		_set_status("The vendored Colyseus GDScript client is missing.")
+		_schedule_reconnect("client SDK unavailable")
 		return
 	game_client = client_script.new()
 	add_child(game_client)
@@ -428,7 +487,9 @@ func _on_game_client_connected() -> void:
 	_set_status("Client initialized. Requesting Colyseus world-room admission...")
 	game_room = game_client.call("join", "world", {"joinTicket": pending_join_ticket})
 	if game_room == null:
+		reconnect_in_progress = false
 		_set_status("Colyseus matchmaking did not return a room.")
+		_schedule_reconnect("matchmaking returned no room")
 		return
 	game_room.connect("joined", Callable(self, "_on_room_joined"))
 	game_room.connect("message_received", Callable(self, "_on_room_message"))
@@ -461,7 +522,13 @@ func _on_room_message(message_type: Variant, data: Variant) -> void:
 		return
 	var character: Dictionary = payload.get("character", {})
 	current_map_id = String(character.get("mapId", ""))
+	selected_character_id = String(character.get("characterId", selected_character_id))
 	world_connected = true
+	reconnect_enabled = true
+	reconnect_in_progress = false
+	reconnect_attempts = 0
+	if reconnect_timer != null:
+		reconnect_timer.stop()
 	world_joined.emit(character)
 	_set_status(
 		"Connected to Colyseus room %s as %s. Movement is server-authoritative; combat is not implemented yet."
@@ -508,25 +575,104 @@ func clear_pending_move_intents() -> void:
 
 func _on_game_client_error(code: int, message: String) -> void:
 	world_connected = false
-	_set_status("Colyseus client error %d: %s. Request a fresh ticket to retry." % [code, message])
+	reconnect_in_progress = false
+	pending_join_ticket = ""
+	_set_status("Colyseus client error %d: %s." % [code, message])
+	_schedule_reconnect("game client error")
 
 
 func _on_room_error(code: int, message: String) -> void:
 	world_connected = false
+	reconnect_in_progress = false
+	pending_join_ticket = ""
 	_set_status("World room rejected the connection (%d): %s" % [code, message])
+	_schedule_reconnect("room error")
 
 
 func _on_room_left(code: int, reason: String) -> void:
 	world_connected = false
+	reconnect_in_progress = false
 	if not access_token.is_empty():
 		_set_status("Left the world room (%d): %s" % [code, reason])
+	if reason != "consented":
+		_schedule_reconnect("room left")
 
 
 func _on_game_client_disconnected() -> void:
 	world_connected = false
+	reconnect_in_progress = false
+	if not intentional_disconnect:
+		pending_join_ticket = ""
+		_schedule_reconnect("network disconnected")
 
 
-func _disconnect_game_client(clear_ticket: bool = true) -> void:
+func _schedule_reconnect(reason: String) -> void:
+	if not reconnect_enabled or intentional_disconnect or selected_character_id.is_empty() or access_token.is_empty():
+		return
+	if reconnect_timer == null or reconnect_timer.time_left > 0.0 or reconnect_in_progress:
+		return
+	if reconnect_attempts >= MAX_RECONNECT_ATTEMPTS:
+		reconnect_enabled = false
+		_set_status("Reconnect stopped after %d attempts. Sign in and select your character to retry." % MAX_RECONNECT_ATTEMPTS)
+		return
+	var delay_seconds := minf(pow(2.0, float(reconnect_attempts)), 15.0)
+	reconnect_attempts += 1
+	reconnect_timer.start(delay_seconds)
+	_set_status("World connection lost (%s). Reconnecting in %.0f second(s), attempt %d/%d..." % [reason, delay_seconds, reconnect_attempts, MAX_RECONNECT_ATTEMPTS])
+
+
+func _on_reconnect_timer_timeout() -> void:
+	if not reconnect_enabled or access_token.is_empty() or selected_character_id.is_empty():
+		return
+	if request_in_flight:
+		reconnect_timer.start(1.0)
+		return
+	_request_reconnect_ticket()
+
+
+func _request_reconnect_ticket() -> void:
+	if selected_character_id.is_empty() or access_token.is_empty():
+		reconnect_in_progress = false
+		reconnect_enabled = false
+		return
+	reconnect_in_progress = true
+	_send_request(
+		"reconnect_ticket",
+		HTTPClient.METHOD_POST,
+		"/v1/characters/%s/select" % selected_character_id,
+		null,
+		true
+	)
+	if not request_in_flight:
+		reconnect_in_progress = false
+		_schedule_reconnect("could not start ticket request")
+
+
+func _attempt_reconnect_refresh() -> void:
+	if refresh_token.is_empty():
+		reconnect_in_progress = false
+		reconnect_enabled = false
+		_set_status("Your session expired. Sign in again.")
+		return
+	_send_request(
+		"reconnect_refresh",
+		HTTPClient.METHOD_POST,
+		"/v1/auth/refresh",
+		{"refreshToken": refresh_token}
+	)
+	if not request_in_flight:
+		reconnect_in_progress = false
+		reconnect_enabled = false
+		_set_status("Could not start session refresh. Sign in again.")
+
+
+func _disconnect_game_client(clear_ticket: bool = true, preserve_reconnect: bool = false) -> void:
+	if not preserve_reconnect:
+		reconnect_enabled = false
+		reconnect_in_progress = false
+		reconnect_attempts = 0
+		if reconnect_timer != null:
+			reconnect_timer.stop()
 	if clear_ticket:
 		pending_join_ticket = ""
 	world_connected = false
@@ -536,10 +682,12 @@ func _disconnect_game_client(clear_ticket: bool = true) -> void:
 	pending_move_intents.clear()
 	game_room = null
 	if game_client != null:
+		intentional_disconnect = true
 		if game_client.has_method("close_connection"):
 			game_client.call("close_connection")
 		game_client.queue_free()
 		game_client = null
+		intentional_disconnect = false
 
 
 func _exit_tree() -> void:

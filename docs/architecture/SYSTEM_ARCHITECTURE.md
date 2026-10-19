@@ -126,3 +126,9 @@ Wayfarer Crossroads is protected (safeZone=true, pvpEnabled=false); Ashen Fronti
 ## Client movement prediction and reconciliation (Phase 13)
 
 The Godot client advances its local avatar on a fixed 20 Hz prediction step using the same provisional speed and diagonal normalization as the server. Each move intent carries a monotonically increasing sequence. The server echoes the latest accepted sequence in that character's world snapshot; the client removes acknowledged inputs, resets its simulation position to the authoritative snapshot, and replays the still-unacknowledged intents. Small corrections preserve visual continuity through a decaying render offset; large corrections snap to server authority. The unacknowledged queue is bounded and cleared on disconnect. This is a responsiveness layer, not client authority: server bounds, collisions, faction restrictions and zone transitions remain decisive. Collision prediction is deliberately conservative/incomplete and server snapshots correct client-side drift.
+
+## Reconnect recovery and character leases (Phase 14)
+
+Unexpected world disconnects schedule bounded exponential retries (1, 2, 4, 8, then 15 seconds), up to five attempts. Each retry obtains a fresh single-use join ticket; if the access token has expired, the client may rotate its in-memory refresh token first. Intentional logout/teardown cancels retries, and successful room admission resets retry state.
+
+PostgreSQL character leases distinguish active connections from disconnected sessions using the disconnected_at timestamp. During the 60-second recovery grace, only the same authenticated session may reclaim a lease explicitly marked disconnected. A second concurrently active connection cannot steal the lease. After the grace lease expires, normal expiry-based takeover applies. The initial migration remains an unreleased development schema and has not been applied to production.

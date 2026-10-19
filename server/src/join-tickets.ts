@@ -146,8 +146,15 @@ export async function consumeJoinTicket(
          SET user_id = EXCLUDED.user_id,
              session_id = EXCLUDED.session_id,
              lease_expires_at = EXCLUDED.lease_expires_at,
+             disconnected_at = NULL,
              updated_at = now()
        WHERE active_character_leases.lease_expires_at <= now()
+          OR (
+            active_character_leases.user_id = EXCLUDED.user_id
+            AND active_character_leases.session_id = EXCLUDED.session_id
+            AND active_character_leases.disconnected_at IS NOT NULL
+            AND active_character_leases.disconnected_at > now() - interval '60 seconds'
+          )
        RETURNING character_id`,
       [ticket.character_id, ticket.user_id, ticket.session_id, leaseExpiresAt],
     );
@@ -210,7 +217,9 @@ export async function extendCharacterLease(
 ): Promise<boolean> {
   const result = await pool.query(
     `UPDATE active_character_leases AS lease
-     SET lease_expires_at = now() + interval '60 seconds', updated_at = now()
+     SET lease_expires_at = now() + interval '60 seconds',
+         disconnected_at = NULL,
+         updated_at = now()
      WHERE lease.character_id = $1
        AND lease.user_id = $2
        AND lease.session_id = $3
@@ -241,7 +250,9 @@ export async function deferCharacterLeaseRelease(
 ): Promise<void> {
   await pool.query(
     `UPDATE active_character_leases
-     SET lease_expires_at = now() + interval '60 seconds', updated_at = now()
+     SET lease_expires_at = now() + interval '60 seconds',
+         disconnected_at = now(),
+         updated_at = now()
      WHERE character_id = $1 AND user_id = $2 AND session_id = $3`,
     [lease.character.id, lease.userId, lease.sessionId],
   );

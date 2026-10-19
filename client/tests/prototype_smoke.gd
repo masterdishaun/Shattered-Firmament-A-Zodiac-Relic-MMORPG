@@ -92,6 +92,19 @@ func _run_smoke_test() -> void:
 		return
 	scene.active_character_id = ""
 
+	# A transient disconnect schedules bounded retry, but logout cancels it.
+	scene.network_panel.access_token = "smoke-test-access-token"
+	scene.network_panel.selected_character_id = "smoke-test-character"
+	scene.network_panel.reconnect_enabled = true
+	scene.network_panel._schedule_reconnect("smoke test")
+	if scene.network_panel.reconnect_timer.is_stopped():
+		_fail("A recoverable world disconnect did not schedule a reconnect attempt.")
+		return
+	scene.network_panel._clear_session()
+	if not scene.network_panel.reconnect_timer.is_stopped() or scene.network_panel.reconnect_enabled:
+		_fail("Logout did not cancel automatic reconnect attempts.")
+		return
+
 	if not scene.camera.current or scene.camera.projection != Camera3D.PROJECTION_ORTHOGONAL:
 		_fail("The isometric follow camera is not configured as expected.")
 		return

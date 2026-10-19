@@ -8,6 +8,7 @@ var panel_b: Control
 var game_scene: Node3D
 var character_a_id := ""
 var character_b_id := ""
+var panel_a_join_count := 0
 
 
 func _initialize() -> void:
@@ -23,6 +24,7 @@ func _run_multiplayer_smoke() -> void:
 	panel_b = panel_script.new()
 	root.add_child(panel_a)
 	root.add_child(panel_b)
+	panel_a.world_joined.connect(_on_panel_a_world_joined)
 	await process_frame
 	panel_a.api_url_input.text = API_BASE
 	panel_b.api_url_input.text = API_BASE
@@ -136,6 +138,30 @@ func _run_multiplayer_smoke() -> void:
 		_fail("The remote avatar did not follow the latest authoritative snapshot.")
 		return
 
+	# Simulate an unexpected transport drop; the client must obtain a new one-use ticket.
+	var joins_before_reconnect := panel_a_join_count
+	var socket: WebSocketPeer = panel_a.game_client.get("_socket")
+	if socket == null:
+		_fail("The first client's WebSocket was unavailable for reconnect simulation.")
+		return
+	socket.close(1000, "simulated transient network interruption")
+	var reconnected := false
+	var reconnect_deadline_ms := Time.get_ticks_msec() + 30_000
+	while Time.get_ticks_msec() < reconnect_deadline_ms:
+		if panel_a_join_count > joins_before_reconnect and panel_a.world_connected:
+			reconnected = true
+			break
+		await create_timer(0.1).timeout
+	if not reconnected:
+		_fail("The first client did not recover after a transient WebSocket interruption: %s" % panel_a.status_label.text)
+		return
+	if panel_a.selected_character_id != character_a_id:
+		_fail("Reconnect did not restore the selected character identity.")
+		return
+	if not await _wait_for_player_count(panel_a, 2):
+		_fail("The reconnected client did not receive its authoritative two-player world snapshot.")
+		return
+
 	panel_b._logout()
 	if not await _wait_for_panel_idle(panel_b):
 		_fail("The second client did not log out.")
@@ -160,6 +186,10 @@ func _run_multiplayer_smoke() -> void:
 	game_scene.queue_free()
 	await process_frame
 	quit(0)
+
+
+func _on_panel_a_world_joined(_character: Dictionary) -> void:
+	panel_a_join_count += 1
 
 
 func _register_and_create(
