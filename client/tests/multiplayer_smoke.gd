@@ -61,29 +61,49 @@ func _run_multiplayer_smoke() -> void:
 	if not await _wait_for_world_connected(panel_b):
 		_fail("The second character did not join the Colyseus room: %s" % panel_b.status_label.text)
 		return
-	if not await _wait_for_player_count(panel_a, 2):
-		_fail("The first client did not receive a two-player world snapshot.")
+	if not await _wait_for_player_count(panel_a, 1) or not await _wait_for_player_count(panel_b, 1):
+		_fail("Players in different maps were not isolated from each other's snapshots.")
 		return
 
 	var initial_snapshot: Dictionary = panel_a.last_world_snapshot
 	var first_state := _find_player(initial_snapshot, character_a_id)
 	var second_state := _find_player(initial_snapshot, character_b_id)
-	if first_state.is_empty() or second_state.is_empty():
-		_fail("The snapshot did not include both authenticated characters.")
+	if first_state.is_empty() or not second_state.is_empty():
+		_fail("The first client did not receive only the character inside its current map.")
 		return
+	var second_start_state := _find_player(panel_b.last_world_snapshot, character_b_id)
 	if String(first_state.get("mapId", "")) != "white_jade_bastion":
 		_fail("The Sovereign character was assigned the wrong start region.")
 		return
-	if String(second_state.get("mapId", "")) != "cinderwake":
+	if String(second_start_state.get("mapId", "")) != "cinderwake":
 		_fail("The Ashen character was assigned the wrong start region.")
 		return
 
+	# Zone transfer is a server-validated request and requires physically reaching each start-zone gate.
+	for _intent in range(12):
+		panel_a.send_move_intent(0.0, 1.0)
+		panel_b.send_move_intent(0.0, 1.0)
+		await create_timer(0.05).timeout
+	panel_a.request_zone_transition("zone.neutral-crossroads")
+	panel_b.request_zone_transition("zone.neutral-crossroads")
+	if not await _wait_for_zone(panel_a, "zone.neutral-crossroads") or not await _wait_for_zone(panel_b, "zone.neutral-crossroads"):
+		_fail("The server did not accept both characters' gate-based transition to the protected hub.")
+		return
+	if not await _wait_for_player_count(panel_a, 2):
+		_fail("The clients did not see each other after entering the same zone.")
+		return
+	initial_snapshot = panel_a.last_world_snapshot
+	first_state = _find_player(initial_snapshot, character_a_id)
+	second_state = _find_player(initial_snapshot, character_b_id)
+	if String(first_state.get("mapId", "")) != "zone.neutral-crossroads" or String(second_state.get("mapId", "")) != "zone.neutral-crossroads":
+		_fail("The server snapshot did not authoritatively update both map IDs.")
+		return
 	var initial_b_x := float(second_state.get("position", {}).get("x", 0.0))
 	for _intent in range(8):
 		panel_b.send_move_intent(1.0, 0.0)
 		await create_timer(0.05).timeout
 	if not await _wait_for_player_x(panel_a, character_b_id, initial_b_x + 0.5):
-		_fail("The first client did not receive the second player's authoritative movement.")
+		_fail("The first client did not receive the second player's authoritative movement within the same zone.")
 		return
 
 	var packed_scene: PackedScene = load("res://scenes/main.tscn")
@@ -178,6 +198,14 @@ func _wait_for_panel_idle(panel: Control) -> bool:
 func _wait_for_world_connected(panel: Control) -> bool:
 	for _frame in range(900):
 		if panel.world_connected:
+			return true
+		await process_frame
+	return false
+
+
+func _wait_for_zone(panel: Control, expected_map_id: String) -> bool:
+	for _frame in range(300):
+		if panel.current_map_id == expected_map_id:
 			return true
 		await process_frame
 	return false

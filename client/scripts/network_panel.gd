@@ -4,6 +4,7 @@ signal status_changed(message: String)
 signal character_ticketed(character: Dictionary)
 signal world_joined(character: Dictionary)
 signal world_snapshot(snapshot: Dictionary)
+signal zone_changed(zone: Dictionary)
 signal close_requested
 
 var access_token := ""
@@ -17,6 +18,8 @@ var game_client: Node
 var game_room: RefCounted
 var world_connected := false
 var last_world_snapshot: Dictionary = {}
+var current_map_id := ""
+var current_zone_rules: Dictionary = {}
 var movement_sequence := 0
 var last_move_sent_at_ms := 0
 
@@ -444,9 +447,19 @@ func _on_room_message(message_type: Variant, data: Variant) -> void:
 		last_world_snapshot = payload
 		world_snapshot.emit(payload)
 		return
+	if message_name == "S2C_ZoneTransitioned":
+		current_map_id = String(payload.get("mapId", current_map_id))
+		current_zone_rules = {"safeZone": bool(payload.get("safeZone", true)), "pvpEnabled": bool(payload.get("pvpEnabled", false))}
+		zone_changed.emit(payload)
+		_set_status("Entered %s. PvP: %s." % [current_map_id, "enabled" if bool(payload.get("pvpEnabled", false)) else "protected"])
+		return
+	if message_name == "S2C_ZoneTransitionRejected":
+		_set_status(String(payload.get("message", "The zone gate rejected the transition.")))
+		return
 	if message_name != "S2C_RoomJoinSuccess":
 		return
 	var character: Dictionary = payload.get("character", {})
+	current_map_id = String(character.get("mapId", ""))
 	world_connected = true
 	world_joined.emit(character)
 	_set_status(
@@ -456,6 +469,12 @@ func _on_room_message(message_type: Variant, data: Variant) -> void:
 			String(character.get("name", "character"))
 		]
 	)
+
+
+func request_zone_transition(target_map_id: String) -> void:
+	if not world_connected or game_room == null or target_map_id.is_empty():
+		return
+	game_room.call("send", "C2S_ZoneTransition", {"targetMapId": target_map_id})
 
 
 func send_move_intent(axis_x: float, axis_y: float) -> void:

@@ -28,6 +28,7 @@ export interface ConsumedJoinTicket {
     id: string;
     name: string;
     level: number;
+    factionId: "sovereign_sect" | "ashen_syndicate" | "astral_concord";
     mapId: string;
     position: { x: number; y: number; facing: number };
     health: number;
@@ -82,6 +83,7 @@ export async function consumeJoinTicket(
       name: string;
       level: number;
       active_map_id: string;
+      faction_id: "sovereign_sect" | "ashen_syndicate" | "astral_concord";
       position_x: number;
       position_y: number;
       facing: number;
@@ -95,7 +97,7 @@ export async function consumeJoinTicket(
               s.revoked_at AS session_revoked_at,
               u.status AS user_status,
               c.status AS character_status,
-              c.name, c.level, c.active_map_id, c.position_x, c.position_y,
+              c.name, c.level, c.faction_id, c.active_map_id, c.position_x, c.position_y,
               c.facing, c.health, c.max_health
        FROM join_tickets jt
        JOIN users u ON u.id = jt.user_id
@@ -183,6 +185,7 @@ export async function consumeJoinTicket(
         id: ticket.character_id,
         name: ticket.name,
         level: ticket.level,
+        factionId: ticket.faction_id,
         mapId: ticket.active_map_id,
         position: {
           x: ticket.position_x,

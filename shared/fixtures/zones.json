@@ -8,7 +8,7 @@
     "pvpEnabled": false,
     "safeZone": true,
     "allowedFactionIds": ["sovereign_sect"],
-    "mapRevision": "blockout-001",
+    "mapRevision": "blockout-002",
     "encounterIds": []
   },
   {
@@ -20,7 +20,7 @@
     "pvpEnabled": false,
     "safeZone": true,
     "allowedFactionIds": ["ashen_syndicate"],
-    "mapRevision": "blockout-001",
+    "mapRevision": "blockout-002",
     "encounterIds": []
   },
   {
@@ -32,7 +32,7 @@
     "pvpEnabled": false,
     "safeZone": true,
     "allowedFactionIds": ["astral_concord"],
-    "mapRevision": "blockout-001",
+    "mapRevision": "blockout-002",
     "encounterIds": []
   },
   {
@@ -48,7 +48,7 @@
       "ashen_syndicate",
       "astral_concord"
     ],
-    "mapRevision": "blockout-001",
+    "mapRevision": "blockout-002",
     "encounterIds": []
   },
   {
@@ -64,7 +64,7 @@
       "ashen_syndicate",
       "astral_concord"
     ],
-    "mapRevision": "blockout-001",
+    "mapRevision": "blockout-002",
     "encounterIds": []
   },
   {
@@ -76,7 +76,7 @@
     "pvpEnabled": true,
     "safeZone": false,
     "allowedFactionIds": ["sovereign_sect"],
-    "mapRevision": "blockout-001",
+    "mapRevision": "blockout-002",
     "encounterIds": []
   }
 ]

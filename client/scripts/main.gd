@@ -144,6 +144,26 @@ func _unhandled_input(event: InputEvent) -> void:
 				_move_to_faction_start(2)
 		KEY_E:
 			_interact_with_relic()
+		KEY_T:
+			_request_zone_transition()
+
+
+func _request_zone_transition() -> void:
+	if network_panel == null or not network_panel.world_connected:
+		return
+	var map_id: String = String(network_panel.current_map_id)
+	var target_map := ""
+	if map_id in ["white_jade_bastion", "cinderwake", "luminous_veil"]:
+		target_map = "zone.neutral-crossroads"
+	elif map_id == "zone.neutral-crossroads":
+		if player.global_position.z >= 23.5:
+			target_map = ["white_jade_bastion", "cinderwake", "luminous_veil"][selected_faction_index]
+		elif player.global_position.z <= 16.5:
+			target_map = "zone.ashen-frontier"
+	elif map_id == "zone.ashen-frontier":
+		target_map = "zone.neutral-crossroads"
+	if not target_map.is_empty():
+		network_panel.request_zone_transition(target_map)
 
 
 func _build_environment() -> void:
@@ -176,7 +196,7 @@ func _build_environment() -> void:
 func _build_world_floor() -> void:
 	_create_box_body(
 		Vector3(0.0, -0.45, 0.0),
-		Vector3(72.0, 0.5, 26.0),
+		Vector3(72.0, 0.5, 70.0),
 		Color(0.075, 0.10, 0.13),
 		"WorldGround"
 	)
@@ -428,6 +448,7 @@ func _toggle_network_panel() -> void:
 		network_panel.character_ticketed.connect(_on_character_ticketed)
 		network_panel.world_joined.connect(_on_world_joined)
 		network_panel.world_snapshot.connect(_on_world_snapshot)
+		network_panel.zone_changed.connect(_on_zone_changed)
 		network_panel.close_requested.connect(_close_network_panel)
 	network_panel.visible = not network_panel.visible
 
@@ -450,6 +471,15 @@ func _on_world_joined(character: Dictionary) -> void:
 	has_authoritative_snapshot = false
 	last_applied_snapshot_tick = 0
 	feedback_label.text = "Server room handshake confirmed for %s. Authoritative movement is active; combat is not implemented yet." % String(character.get("name", "character"))
+
+
+func _on_zone_changed(zone: Dictionary) -> void:
+	var position: Dictionary = zone.get("position", {})
+	if position.has("x") and position.has("y"):
+		authoritative_target_position = Vector3(float(position["x"]), 0.04, float(position["y"]))
+		player.global_position = authoritative_target_position
+		has_authoritative_snapshot = true
+	_clear_remote_avatars()
 
 
 func _on_world_snapshot(snapshot: Dictionary) -> void:

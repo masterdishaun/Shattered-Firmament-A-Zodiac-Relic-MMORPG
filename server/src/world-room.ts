@@ -7,6 +7,16 @@ import {
   type WorldSnapshotEnvelope,
 } from "@shattered-firmament/shared/protocol";
 import {
+  FACTION_START_ZONE,
+  isPositionWalkable,
+  isZoneAllowedForFaction,
+  isZoneId,
+  resolveZoneTransition,
+  WORLD_ZONES,
+  zoneFallbackSpawn,
+  type FactionId,
+} from "./zones.js";
+import {
   applyMoveIntent,
   parseMoveIntent,
   stepPlayerMovement,
@@ -32,6 +42,7 @@ interface WorldPlayerRuntime extends PlayerMovementState {
   characterId: string;
   name: string;
   mapId: string;
+  factionId: FactionId;
   health: number;
   maxHealth: number;
   lastIntentAtMs: number;
@@ -60,6 +71,9 @@ export class WorldRoom extends Room<
     this.pool = options.pool;
     this.onMessage("C2S_MoveIntent", (client, message: unknown) => {
       this.handleMoveIntent(client, message);
+    });
+    this.onMessage("C2S_ZoneTransition", (client, message: unknown) => {
+      this.handleZoneTransition(client, message);
     });
     this.setSimulationInterval(() => {
       this.simulateWorld();
@@ -104,15 +118,31 @@ export class WorldRoom extends Room<
       throw new ServerError(401, "World admission was not authenticated.");
     }
     this.authenticatedClients.set(client.sessionId, auth);
+    const factionId = auth.character.factionId;
+    const mapId =
+      isZoneId(auth.character.mapId) &&
+      isZoneAllowedForFaction(auth.character.mapId, factionId)
+        ? auth.character.mapId
+        : FACTION_START_ZONE[factionId];
+    const persistedPosition = auth.character.position;
+    const safeSpawn = zoneFallbackSpawn(mapId);
+    const positionIsWalkable = isPositionWalkable(
+      mapId,
+      persistedPosition.x,
+      persistedPosition.y,
+    );
     const state: WorldPlayerRuntime = {
       userId: auth.userId,
       sessionId: client.sessionId,
       characterId: auth.character.id,
       name: auth.character.name,
-      mapId: auth.character.mapId,
-      x: auth.character.position.x,
-      y: auth.character.position.y,
-      facing: auth.character.position.facing,
+      mapId,
+      factionId,
+      x: positionIsWalkable ? persistedPosition.x : safeSpawn.x,
+      y: positionIsWalkable ? persistedPosition.y : safeSpawn.y,
+      facing: Number.isFinite(persistedPosition.facing)
+        ? persistedPosition.facing
+        : 0,
       movementSequence: 0,
       axisX: 0,
       axisY: 0,
@@ -134,7 +164,7 @@ export class WorldRoom extends Room<
           characterId: auth.character.id,
           name: auth.character.name,
           level: auth.character.level,
-          mapId: auth.character.mapId,
+          mapId: state.mapId,
           position: {
             x: state.x,
             y: state.y,
@@ -148,7 +178,7 @@ export class WorldRoom extends Room<
           tickRate: WORLD_MOVEMENT.tickRate,
           serverTick: this.serverTick,
           snapshotRate: WORLD_MOVEMENT.tickRate,
-          mapRevision: "blockout-001",
+          mapRevision: "blockout-002",
         },
         serverTime: new Date().toISOString(),
       },
@@ -212,35 +242,94 @@ export class WorldRoom extends Room<
     applyMoveIntent(state, intent);
   }
 
+  private handleZoneTransition(client: Client, message: unknown) {
+    const state = this.playerStates.get(client.sessionId);
+    if (
+      !state ||
+      typeof message !== "object" ||
+      message === null ||
+      Array.isArray(message)
+    )
+      return;
+    const candidate = message as Record<string, unknown>;
+    if (
+      Object.keys(candidate).some((key) => key !== "targetMapId") ||
+      typeof candidate.targetMapId !== "string"
+    ) {
+      client.send("S2C_ZoneTransitionRejected", {
+        type: "S2C_ZoneTransitionRejected",
+        protocolVersion: PROTOCOL_VERSION,
+        payload: { message: "Invalid transition request." },
+      });
+      return;
+    }
+    const transition = resolveZoneTransition({
+      sourceMapId: state.mapId,
+      targetMapId: candidate.targetMapId,
+      factionId: state.factionId,
+      x: state.x,
+      y: state.y,
+    });
+    if (!transition) {
+      client.send("S2C_ZoneTransitionRejected", {
+        type: "S2C_ZoneTransitionRejected",
+        protocolVersion: PROTOCOL_VERSION,
+        payload: {
+          message: "Reach an authorised zone gate before changing regions.",
+        },
+      });
+      return;
+    }
+    state.axisX = 0;
+    state.axisY = 0;
+    state.mapId = transition.mapId;
+    state.x = transition.x;
+    state.y = transition.y;
+    client.send("S2C_ZoneTransitioned", {
+      type: "S2C_ZoneTransitioned",
+      protocolVersion: PROTOCOL_VERSION,
+      payload: {
+        mapId: state.mapId,
+        position: { x: state.x, y: state.y, facing: state.facing },
+        safeZone: WORLD_ZONES[transition.mapId].safeZone,
+        pvpEnabled: WORLD_ZONES[transition.mapId].pvpEnabled,
+      },
+    });
+  }
+
   private simulateWorld() {
     this.serverTick += 1;
     for (const state of this.playerStates.values()) {
-      stepPlayerMovement(state, WORLD_MOVEMENT.stepSeconds);
+      stepPlayerMovement(state, WORLD_MOVEMENT.stepSeconds, state.mapId);
     }
 
     if (this.clients.length === 0) return;
-    const snapshot: WorldSnapshotEnvelope = {
-      type: "S2C_WorldSnapshot",
-      protocolVersion: PROTOCOL_VERSION,
-      payload: {
-        serverTick: this.serverTick,
-        serverTime: new Date().toISOString(),
-        players: [...this.playerStates.values()].map((state) => ({
-          characterId: state.characterId,
-          name: state.name,
-          mapId: state.mapId,
-          position: {
-            x: state.x,
-            y: state.y,
-            facing: state.facing,
-          },
-          movementSequence: state.movementSequence,
-          health: state.health,
-          maxHealth: state.maxHealth,
-        })),
-      },
-    };
-    this.broadcast("S2C_WorldSnapshot", snapshot);
+    const serverTime = new Date().toISOString();
+    for (const client of this.clients) {
+      const recipient = this.playerStates.get(client.sessionId);
+      if (!recipient) continue;
+      const snapshot: WorldSnapshotEnvelope = {
+        type: "S2C_WorldSnapshot",
+        protocolVersion: PROTOCOL_VERSION,
+        payload: {
+          serverTick: this.serverTick,
+          serverTime,
+          // Zone membership is authoritative: clients only receive presence for their own map.
+          players: [...this.playerStates.values()]
+            .filter((state) => state.mapId === recipient.mapId)
+            .map((state) => ({
+              characterId: state.characterId,
+              name: state.name,
+              mapId: state.mapId,
+              position: { x: state.x, y: state.y, facing: state.facing },
+              movementSequence: state.movementSequence,
+              health: state.health,
+              maxHealth: state.maxHealth,
+            })),
+        },
+      };
+      client.send("S2C_WorldSnapshot", snapshot);
+    }
   }
 
   private async persistActivePositions() {
@@ -262,6 +351,7 @@ export class WorldRoom extends Room<
       user_id: state.userId,
       position_x: state.x,
       position_y: state.y,
+      map_id: state.mapId,
       facing: state.facing,
     }));
 
@@ -271,6 +361,7 @@ export class WorldRoom extends Room<
           "UPDATE characters AS c\n" +
             "SET position_x = p.position_x,\n" +
             "    position_y = p.position_y,\n" +
+            "    active_map_id = p.map_id,\n" +
             "    facing = p.facing,\n" +
             "    updated_at = now(),\n" +
             "    last_played_at = now()\n" +
@@ -279,6 +370,7 @@ export class WorldRoom extends Room<
             "  user_id UUID,\n" +
             "  position_x DOUBLE PRECISION,\n" +
             "  position_y DOUBLE PRECISION,\n" +
+            "  map_id TEXT,\n" +
             "  facing DOUBLE PRECISION\n" +
             ")\n" +
             "WHERE c.id = p.character_id AND c.user_id = p.user_id",
