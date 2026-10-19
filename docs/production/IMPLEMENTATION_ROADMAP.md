@@ -95,7 +95,7 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 
 ## Progress log ? Phase 3 persistence foundation
 
-- Added a numbered migration runner with a PostgreSQL advisory lock, transactional migration application, migration ledger, SHA-256 checksums and edited-migration drift detection.
+- Added a numbered migration runner with a PostgreSQL advisory lock, transactional migration application, migration ledger, SHA-256 checksums and edited-migration drift detection. The CLI was executed against a disposable PostgreSQL 17 cluster: the first run applied 0001_initial.sql and the second run safely skipped it.
 - Removed the transaction wrapper from the unreleased initial SQL draft so the runner can commit schema changes and the migration ledger record atomically.
 - Added integration tests for initial schema creation, idempotent reruns and checksum drift; executed against a disposable PostgreSQL 17 cluster on the workstation: 2 migration tests passed.
 - Added PostgreSQL 17 service and TEST_DATABASE_URL to GitHub Actions. CI must pass on the resulting commit before this phase is considered verified.
