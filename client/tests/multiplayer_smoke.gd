@@ -27,6 +27,7 @@ func _run_multiplayer_smoke() -> void:
 	root.add_child(panel_b)
 	panel_a.world_joined.connect(_on_panel_a_world_joined)
 	panel_a.combat_result.connect(_on_panel_a_combat_result)
+	panel_b.combat_result.connect(_on_panel_a_combat_result)
 	await process_frame
 	panel_a.api_url_input.text = API_BASE
 	panel_b.api_url_input.text = API_BASE
@@ -106,10 +107,10 @@ func _run_multiplayer_smoke() -> void:
 	var health_before_safe_attack := int(second_state.get("health", 0))
 	var result_count_before := combat_results.size()
 	panel_a.send_basic_attack(character_b_id)
-	if not await _wait_for_combat_result(result_count_before):
+	if (await _wait_for_combat_event(result_count_before, character_a_id, character_b_id)).is_empty():
 		_fail("The server did not return a combat result for the peace-zone attack.")
 		return
-	var safe_result: Dictionary = combat_results.back()
+	var safe_result: Dictionary = (await _wait_for_combat_event(result_count_before, character_a_id, character_b_id))
 	if bool(safe_result.get("accepted", true)) or String(safe_result.get("reason", "")) != "SAFE_ZONE":
 		_fail("The server did not reject the peace-zone attack with SAFE_ZONE.")
 		return
@@ -133,10 +134,10 @@ func _run_multiplayer_smoke() -> void:
 	await create_timer(0.15).timeout
 	result_count_before = combat_results.size()
 	panel_a.send_basic_attack(character_b_id)
-	if not await _wait_for_combat_result(result_count_before):
+	if (await _wait_for_combat_event(result_count_before, character_a_id, character_b_id)).is_empty():
 		_fail("The server did not return a result for the contested-zone attack.")
 		return
-	var successful_attack: Dictionary = combat_results.back()
+	var successful_attack: Dictionary = await _wait_for_combat_event(result_count_before, character_a_id, character_b_id)
 	if not bool(successful_attack.get("accepted", false)) or int(successful_attack.get("damage", 0)) <= 0:
 		_fail("The server rejected a valid enemy-faction attack in the contested zone.")
 		return
@@ -144,6 +145,25 @@ func _run_multiplayer_smoke() -> void:
 		_fail("The authoritative world snapshot did not reflect server-applied combat damage.")
 		return
 
+	# A Mystic uses a server-validated ranged ability against the Ashen Wisp.
+	var enemy_before: Dictionary = _find_enemy(panel_b.last_world_snapshot, "enemy:ashen-wisp-01")
+	if enemy_before.is_empty():
+		_fail("The Ashen Wisp was not included in the authoritative zone snapshot.")
+		return
+	var enemy_health_before := int(enemy_before.get("health", 0))
+	var mana_before := int(_find_player(panel_b.last_world_snapshot, character_b_id).get("mana", 0))
+	result_count_before = combat_results.size()
+	panel_b.send_ability("astral-bolt", "enemy:ashen-wisp-01")
+	var ability_result: Dictionary = await _wait_for_combat_event(result_count_before, character_b_id, "enemy:ashen-wisp-01", "astral-bolt")
+	if ability_result.is_empty() or not bool(ability_result.get("accepted", false)) or int(ability_result.get("damage", 0)) != 24:
+		_fail("The server did not resolve the Mystic's Astral Bolt against the Ashen Wisp.")
+		return
+	if int(ability_result.get("resourceAfter", mana_before)) != mana_before - 20:
+		_fail("Astral Bolt did not spend its server-defined resource cost.")
+		return
+	if not await _wait_for_enemy_health(panel_b, "enemy:ashen-wisp-01", enemy_health_before - 24):
+		_fail("The world snapshot did not replicate authoritative enemy damage.")
+		return
 	var initial_b_x := float(second_state.get("position", {}).get("x", 0.0))
 	for _intent in range(8):
 		panel_b.send_move_intent(1.0, 0.0)
@@ -164,6 +184,9 @@ func _run_multiplayer_smoke() -> void:
 	if not game_scene.remote_avatars.has(character_b_id):
 		_fail("A real two-player snapshot did not create the remote avatar.")
 		return
+	if not game_scene.enemy_avatars.has("enemy:ashen-wisp-01"):
+		_fail("The Ashen Wisp did not render from its authoritative enemy snapshot.")
+		return
 	var remote_avatar: Node3D = game_scene.remote_avatars[character_b_id]
 	if remote_avatar.get_child_count() < 2:
 		_fail("The remote avatar is missing its mesh or name label.")
@@ -182,6 +205,55 @@ func _run_multiplayer_smoke() -> void:
 		_fail("The remote avatar did not follow the latest authoritative snapshot.")
 		return
 
+	for _intent in range(12):
+		panel_b.send_move_intent(-1.0, 0.0)
+		await create_timer(0.05).timeout
+	panel_a.send_move_intent(0.0, 0.0)
+	panel_b.send_move_intent(0.0, 0.0)
+	await create_timer(0.2).timeout
+	# Defeat the opposing character and verify the five-second, no-gear-loss respawn path.
+	for _attack_index in range(6):
+		var current_target := _find_player(panel_a.last_world_snapshot, character_b_id)
+		if current_target.is_empty() or int(current_target.get("health", 0)) <= 0:
+			break
+		await create_timer(1.05).timeout
+		result_count_before = combat_results.size()
+		panel_a.send_basic_attack(character_b_id)
+		var attack_result: Dictionary = await _wait_for_combat_event(result_count_before, character_a_id, character_b_id)
+		if attack_result.is_empty() or not bool(attack_result.get("accepted", false)):
+			_fail("A valid cooldown-spaced PvP attack was not accepted during the death test: %s" % String(attack_result.get("reason", "no-result")))
+			return
+		await create_timer(0.1).timeout
+	if not await _wait_for_zone_real_time(panel_b, "cinderwake"):
+		_fail("The defeated character did not respawn at its faction sanctuary.")
+		return
+	var respawn_state := _find_player(panel_b.last_world_snapshot, character_b_id)
+	if respawn_state.is_empty() or int(respawn_state.get("health", 0)) != int(respawn_state.get("maxHealth", 100)):
+		_fail("Respawn did not restore authoritative character health.")
+		return
+	await create_timer(0.2).timeout
+	panel_b._fetch_characters()
+	if not await _wait_for_panel_idle(panel_b):
+		_fail("Could not refresh persisted character state after respawn.")
+		return
+	if panel_b.characters.is_empty() or int(panel_b.characters[0].get("health", 0)) != int(panel_b.characters[0].get("maxHealth", 100)):
+		_fail("Respawn health was not persisted to PostgreSQL.")
+		return
+	for _intent in range(12):
+		panel_b.send_move_intent(0.0, 1.0)
+		await create_timer(0.05).timeout
+	panel_b.request_zone_transition("zone.neutral-crossroads")
+	if not await _wait_for_zone(panel_b, "zone.neutral-crossroads"):
+		_fail("Respawned character could not return to the shared hub.")
+		return
+	panel_b.request_zone_transition("zone.ashen-frontier")
+	if not await _wait_for_zone(panel_b, "zone.ashen-frontier"):
+		_fail("Respawned character could not re-enter the contested region.")
+		return
+	if not await _wait_for_player_count(panel_a, 2):
+		_fail("The respawned character did not reappear in the contested-zone snapshot.")
+		return
+	game_scene._on_world_snapshot(panel_a.last_world_snapshot)
 	# Simulate an unexpected transport drop; the client must obtain a new one-use ticket.
 	var joins_before_reconnect := panel_a_join_count
 	var socket: WebSocketPeer = panel_a.game_client.get("_socket")
@@ -244,10 +316,46 @@ func _wait_for_combat_result(previous_count: int) -> bool:
 	return false
 
 
+func _wait_for_player_full_health(panel: Control, character_id: String) -> bool:
+	for _frame in range(300):
+		var state := _find_player(panel.last_world_snapshot, character_id)
+		if not state.is_empty() and int(state.get("health", 0)) == int(state.get("maxHealth", 100)):
+			return true
+		await process_frame
+	return false
+
 func _wait_for_player_health(panel: Control, character_id: String, target_health: int) -> bool:
 	for _frame in range(300):
 		var state := _find_player(panel.last_world_snapshot, character_id)
 		if not state.is_empty() and int(state.get("health", 999999)) <= target_health:
+			return true
+		await process_frame
+	return false
+
+func _wait_for_combat_event(previous_count: int, attacker_id: String, target_id: String, ability_id: String = "") -> Dictionary:
+	for _frame in range(300):
+		for index in range(previous_count, combat_results.size()):
+			var result: Dictionary = combat_results[index]
+			if String(result.get("attackerCharacterId", "")) != attacker_id or String(result.get("targetCharacterId", "")) != target_id:
+				continue
+			if not ability_id.is_empty() and String(result.get("abilityId", "")) != ability_id:
+				continue
+			return result
+		await process_frame
+	return {}
+
+
+func _find_enemy(snapshot: Dictionary, enemy_id: String) -> Dictionary:
+	for enemy in snapshot.get("enemies", []):
+		if String(enemy.get("id", "")) == enemy_id:
+			return enemy
+	return {}
+
+
+func _wait_for_enemy_health(panel: Control, enemy_id: String, target_health: int) -> bool:
+	for _frame in range(300):
+		var enemy := _find_enemy(panel.last_world_snapshot, enemy_id)
+		if not enemy.is_empty() and int(enemy.get("health", 999999)) <= target_health:
 			return true
 		await process_frame
 	return false
@@ -296,6 +404,13 @@ func _wait_for_world_connected(panel: Control) -> bool:
 		await process_frame
 	return false
 
+
+func _wait_for_zone_real_time(panel: Control, expected_map_id: String) -> bool:
+	for _attempt in range(100):
+		if panel.current_map_id == expected_map_id:
+			return true
+		await create_timer(0.1).timeout
+	return false
 
 func _wait_for_zone(panel: Control, expected_map_id: String) -> bool:
 	for _frame in range(300):

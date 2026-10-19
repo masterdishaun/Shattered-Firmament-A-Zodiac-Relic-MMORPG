@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = 1 as const;
+﻿export const PROTOCOL_VERSION = 1 as const;
 export interface ErrorEnvelope {
   type: "S2C_Error";
   protocolVersion: typeof PROTOCOL_VERSION;
@@ -28,11 +28,14 @@ export interface RoomJoinSuccess {
     character: {
       characterId: string;
       name: string;
+      classId: string;
       level: number;
       mapId: string;
       position: { x: number; y: number; facing: number };
       health: number;
       maxHealth: number;
+      mana: number;
+      maxMana: number;
       movementSequence: number;
     };
     world: {
@@ -52,6 +55,10 @@ export interface ClientMoveIntent {
 export interface ClientCombatIntent {
   targetCharacterId: string;
 }
+export interface ClientAbilityIntent {
+  abilityId: string;
+  targetId: string;
+}
 export interface CombatResultEnvelope {
   type: "S2C_CombatResult";
   protocolVersion: typeof PROTOCOL_VERSION;
@@ -60,17 +67,43 @@ export interface CombatResultEnvelope {
     attackerCharacterId: string;
     targetCharacterId: string;
     damage: number;
+    healing?: number;
     targetHealth?: number;
+    resourceAfter?: number;
+    abilityId?: string;
     reason: string | null;
     serverTick: number;
+  };
+}
+export interface RespawnedEnvelope {
+  type: "S2C_Respawned";
+  protocolVersion: typeof PROTOCOL_VERSION;
+  payload: {
+    mapId: string;
+    position: { x: number; y: number; facing: number };
+    health: number;
+    maxHealth: number;
+    mana: number;
+    maxMana: number;
   };
 }
 export interface WorldPlayerSnapshot {
   characterId: string;
   name: string;
+  classId: string;
   mapId: string;
   position: { x: number; y: number; facing: number };
   movementSequence: number;
+  health: number;
+  maxHealth: number;
+  mana: number;
+  maxMana: number;
+}
+export interface WorldEnemySnapshot {
+  id: string;
+  name: string;
+  mapId: string;
+  position: { x: number; y: number };
   health: number;
   maxHealth: number;
 }
@@ -81,5 +114,6 @@ export interface WorldSnapshotEnvelope {
     serverTick: number;
     serverTime: string;
     players: WorldPlayerSnapshot[];
+    enemies: WorldEnemySnapshot[];
   };
 }

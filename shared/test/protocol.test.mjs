@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -43,11 +43,24 @@ test("world snapshot schema accepts the versioned server-authoritative shape", a
         {
           characterId: "123e4567-e89b-42d3-a456-426614174000",
           name: "Test Hero",
+          classId: "mystic",
           mapId: "luminous_veil",
           position: { x: 22, y: 4, facing: 0 },
           movementSequence: 7,
           health: 100,
           maxHealth: 100,
+          mana: 75,
+          maxMana: 100,
+        },
+      ],
+      enemies: [
+        {
+          id: "enemy:ashen-wisp-01",
+          name: "Ashen Wisp",
+          mapId: "zone.ashen-frontier",
+          position: { x: 3, y: -23 },
+          health: 90,
+          maxHealth: 90,
         },
       ],
     },
@@ -107,6 +120,47 @@ test("combat result schema accepts server-owned damage and rejects malformed res
   );
   assert.equal(
     validate({ ...result, payload: { ...result.payload, clientDamage: 999 } }),
+    false,
+  );
+});
+
+test("ability intent schema accepts target and ability IDs only", async () => {
+  const validate = new Ajv2020({ allErrors: true }).compile(
+    await readSchema("ability-intent"),
+  );
+  assert.equal(
+    validate({ abilityId: "astral-bolt", targetId: "enemy:ashen-wisp-01" }),
+    true,
+  );
+  assert.equal(
+    validate({
+      abilityId: "astral-bolt",
+      targetId: "enemy:ashen-wisp-01",
+      damage: 999,
+    }),
+    false,
+  );
+});
+
+test("respawned schema includes a safe-zone location and authoritative restored resources", async () => {
+  const validate = new Ajv2020({ allErrors: true }).compile(
+    await readSchema("respawned"),
+  );
+  const event = {
+    type: "S2C_Respawned",
+    protocolVersion: 1,
+    payload: {
+      mapId: "cinderwake",
+      position: { x: 0, y: 4, facing: 0 },
+      health: 100,
+      maxHealth: 100,
+      mana: 100,
+      maxMana: 100,
+    },
+  };
+  assert.equal(validate(event), true, JSON.stringify(validate.errors));
+  assert.equal(
+    validate({ ...event, payload: { ...event.payload, health: 0 } }),
     false,
   );
 });

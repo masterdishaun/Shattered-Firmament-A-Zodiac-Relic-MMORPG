@@ -46,6 +46,10 @@ var hud_root: Control
 var network_panel: Control
 var remote_avatars: Dictionary = {}
 var remote_targets: Dictionary = {}
+var enemy_avatars: Dictionary = {}
+var enemy_targets: Dictionary = {}
+var current_character_class_id := "vanguard"
+var combat_stats_label: Label
 var active_character_id := ""
 var last_applied_snapshot_tick := 0
 var has_authoritative_snapshot := false
@@ -83,7 +87,13 @@ func _process(delta: float) -> void:
 			continue
 		avatar.global_position = avatar.global_position.lerp(target["position"], blend)
 		avatar.rotation.y = lerp_angle(avatar.rotation.y, float(target["facing"]), blend)
-	camera.global_position = player.global_position + CAMERA_OFFSET
+	for enemy_id in enemy_targets:
+		var enemy_avatar: Node3D = enemy_avatars.get(enemy_id)
+		var enemy_target: Dictionary = enemy_targets[enemy_id]
+		if enemy_avatar != null:
+			enemy_avatar.visible = int(enemy_target.get("health", 0)) > 0
+			enemy_avatar.global_position = enemy_avatar.global_position.lerp(enemy_target["position"], blend)
+		camera.global_position = player.global_position + CAMERA_OFFSET
 	camera.look_at(player.global_position + Vector3(0.0, 0.8, 0.0), Vector3.UP)
 	hud_refresh_elapsed += delta
 	if hud_refresh_elapsed >= 0.15:
@@ -153,9 +163,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_1:
 			if network_panel == null or not network_panel.world_connected:
 				_move_to_faction_start(0)
+			else:
+				_request_class_ability(false)
 		KEY_2:
 			if network_panel == null or not network_panel.world_connected:
 				_move_to_faction_start(1)
+			else:
+				_request_class_ability(true)
 		KEY_3:
 			if network_panel == null or not network_panel.world_connected:
 				_move_to_faction_start(2)
@@ -181,16 +195,61 @@ func _request_basic_attack() -> void:
 			nearest_distance = distance
 			nearest_id = String(character_id)
 	if nearest_id.is_empty():
-		feedback_label.text = "No target in melee range. Find an enemy in a contested PvP zone."
+		var enemy_id := _nearest_enemy_id(2.5)
+		if enemy_id.is_empty():
+			feedback_label.text = "No target in melee range."
+			return
+		network_panel.send_ability("basic-strike", enemy_id)
 		return
 	network_panel.send_basic_attack(nearest_id)
 
 
 func _on_combat_result(result: Dictionary) -> void:
-	if bool(result.get("accepted", false)):
-		feedback_label.text = "Combat confirmed by server: %d damage." % int(result.get("damage", 0))
-	else:
+	if not bool(result.get("accepted", false)):
 		feedback_label.text = "Combat rejected by server: %s." % String(result.get("reason", "unknown"))
+		return
+	var healing := int(result.get("healing", 0))
+	var damage := int(result.get("damage", 0))
+	if healing > 0:
+		feedback_label.text = "Restored %d health." % healing
+	elif damage > 0:
+		feedback_label.text = "Server confirmed %d damage." % damage
+	else:
+		feedback_label.text = "Ability resolved."
+
+func _request_class_ability(secondary: bool) -> void:
+	if network_panel == null or not network_panel.world_connected:
+		return
+	var ability_id := ""
+	match current_character_class_id:
+		"vanguard": ability_id = "iron-breaker" if secondary else "jade-strike"
+		"mystic": ability_id = "starfall" if secondary else "astral-bolt"
+		"support":
+			if not secondary:
+				network_panel.send_ability("spirit-mend", active_character_id)
+				return
+			ability_id = "resonant-pulse"
+	var target_id := _nearest_enemy_id(8.0)
+	if target_id.is_empty():
+		feedback_label.text = "No Ashen Wisp in ability range. Explore the Ashen Frontier."
+		return
+	network_panel.send_ability(ability_id, target_id)
+
+
+func _nearest_enemy_id(max_range: float) -> String:
+	var nearest_id := ""
+	var nearest_distance := max_range
+	for enemy_id in enemy_targets.keys():
+		var target: Dictionary = enemy_targets[enemy_id]
+		if int(target.get("health", 0)) <= 0:
+			continue
+		var target_position: Vector3 = target.get("position", Vector3.ZERO)
+		var distance := Vector2(player.global_position.x, player.global_position.z).distance_to(Vector2(target_position.x, target_position.z))
+		if distance <= nearest_distance:
+			nearest_distance = distance
+			nearest_id = String(enemy_id)
+	return nearest_id
+
 
 func _request_zone_transition() -> void:
 	if network_panel == null or not network_panel.world_connected:
@@ -453,10 +512,16 @@ func _build_hud() -> void:
 	stack.add_child(status_label)
 
 	var help := Label.new()
-	help.text = "WASD Move   •   E Inspect Relic   •   1 / 2 / 3 Preview Faction Starts"
+	help.text = "WASD Move   E Relic   F Basic Attack   1 Primary   2 Secondary   T Gate"
 	help.add_theme_font_size_override("font_size", 12)
 	help.add_theme_color_override("font_color", Color(0.63, 0.72, 0.78))
 	stack.add_child(help)
+
+	combat_stats_label = Label.new()
+	combat_stats_label.text = "HP --/--   Spirit --/--"
+	combat_stats_label.add_theme_font_size_override("font_size", 13)
+	combat_stats_label.add_theme_color_override("font_color", Color(0.88, 0.82, 0.62))
+	stack.add_child(combat_stats_label)
 
 	var online_button := Button.new()
 	online_button.text = "ONLINE ACCOUNT / CHARACTER"
@@ -471,7 +536,7 @@ func _build_hud() -> void:
 	stack.add_child(prompt_label)
 
 	feedback_label = Label.new()
-	feedback_label.text = "Blockout prototype · local movement only"
+	feedback_label.text = "Blockout prototype Ã‚Â· local movement only"
 	feedback_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	feedback_label.custom_minimum_size = Vector2(410.0, 36.0)
 	feedback_label.add_theme_font_size_override("font_size", 12)
@@ -537,6 +602,10 @@ func _on_zone_changed(zone: Dictionary) -> void:
 
 func _on_world_snapshot(snapshot: Dictionary) -> void:
 	_update_remote_avatars(snapshot)
+	_update_enemy_avatars(snapshot)
+	for state in snapshot.get("players", []):
+		if state is Dictionary and String(state.get("characterId", "")) == active_character_id and combat_stats_label != null:
+			combat_stats_label.text = "HP %d/%d   Spirit %d/%d" % [int(state.get("health", 0)), int(state.get("maxHealth", 100)), int(state.get("mana", 0)), int(state.get("maxMana", 100))]
 	var server_tick := int(snapshot.get("serverTick", 0))
 	if server_tick <= last_applied_snapshot_tick:
 		return
@@ -573,6 +642,53 @@ func _on_world_snapshot(snapshot: Dictionary) -> void:
 		player.global_position = predicted_position + correction_offset
 		has_authoritative_snapshot = true
 		return
+
+
+func _update_enemy_avatars(snapshot: Dictionary) -> void:
+	var present_ids: Dictionary = {}
+	for state in snapshot.get("enemies", []):
+		if not state is Dictionary:
+			continue
+		var enemy_id := String(state.get("id", ""))
+		var position: Dictionary = state.get("position", {})
+		if enemy_id.is_empty() or not position.has("x") or not position.has("y"):
+			continue
+		var target_position := Vector3(float(position["x"]), 0.04, float(position["y"]))
+		present_ids[enemy_id] = true
+		if not enemy_avatars.has(enemy_id):
+			var avatar := _create_enemy_avatar(enemy_id, String(state.get("name", "Wild Spirit")))
+			add_child(avatar)
+			avatar.global_position = target_position
+			enemy_avatars[enemy_id] = avatar
+		enemy_targets[enemy_id] = {"position": target_position, "health": int(state.get("health", 0)), "maxHealth": int(state.get("maxHealth", 1))}
+	for enemy_id in enemy_avatars.keys():
+		if not present_ids.has(enemy_id):
+			var avatar: Node3D = enemy_avatars[enemy_id]
+			avatar.queue_free()
+			enemy_avatars.erase(enemy_id)
+			enemy_targets.erase(enemy_id)
+
+
+func _create_enemy_avatar(enemy_id: String, display_name: String) -> Node3D:
+	var avatar := Node3D.new()
+	avatar.name = "Enemy_" + enemy_id.replace(":", "_").replace("-", "_")
+	avatar.set_meta("enemy_id", enemy_id)
+	var mesh := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.48
+	sphere.height = 0.96
+	mesh.mesh = sphere
+	mesh.position.y = 0.55
+	mesh.material_override = _material(Color(0.96, 0.36, 0.16), 0.25, 0.35)
+	avatar.add_child(mesh)
+	var label := Label3D.new()
+	label.text = display_name
+	label.position.y = 1.35
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 28
+	label.modulate = Color(1.0, 0.67, 0.46)
+	avatar.add_child(label)
+	return avatar
 
 
 func _update_remote_avatars(snapshot: Dictionary) -> void:
@@ -660,6 +776,11 @@ func _clear_remote_avatars() -> void:
 		avatar.queue_free()
 	remote_avatars.clear()
 	remote_targets.clear()
+	for enemy_id in enemy_avatars.keys():
+		var enemy_avatar: Node3D = enemy_avatars[enemy_id]
+		enemy_avatar.queue_free()
+	enemy_avatars.clear()
+	enemy_targets.clear()
 
 
 func _on_network_status_changed(message: String) -> void:
@@ -671,6 +792,7 @@ func _on_network_status_changed(message: String) -> void:
 func _on_character_ticketed(character: Dictionary) -> void:
 	_clear_remote_avatars()
 	active_character_id = String(character.get("id", ""))
+	current_character_class_id = String(character.get("classId", "vanguard"))
 	var map_id: String = String(character.get("mapId", ""))
 	var map_to_faction := {
 		"white_jade_bastion": 0,

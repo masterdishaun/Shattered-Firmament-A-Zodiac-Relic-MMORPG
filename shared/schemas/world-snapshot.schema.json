@@ -1,30 +1,20 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://shattered-firmament.invalid/schemas/world-snapshot.schema.json",
+  "$id": "https://shattered-firmament.dev/schemas/world-snapshot.schema.json",
   "title": "World Snapshot Envelope",
   "type": "object",
   "additionalProperties": false,
   "required": ["type", "protocolVersion", "payload"],
   "properties": {
-    "type": {
-      "const": "S2C_WorldSnapshot"
-    },
-    "protocolVersion": {
-      "const": 1
-    },
+    "type": { "const": "S2C_WorldSnapshot" },
+    "protocolVersion": { "const": 1 },
     "payload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["serverTick", "serverTime", "players"],
+      "required": ["serverTick", "serverTime", "players", "enemies"],
       "properties": {
-        "serverTick": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "serverTime": {
-          "type": "string",
-          "minLength": 20
-        },
+        "serverTick": { "type": "integer", "minimum": 0 },
+        "serverTime": { "type": "string", "minLength": 20 },
         "players": {
           "type": "array",
           "items": {
@@ -33,21 +23,24 @@
             "required": [
               "characterId",
               "name",
+              "classId",
               "mapId",
               "position",
               "movementSequence",
               "health",
-              "maxHealth"
+              "maxHealth",
+              "mana",
+              "maxMana"
             ],
             "properties": {
               "characterId": {
                 "type": "string",
                 "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
               },
-              "name": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 24 },
+              "classId": {
                 "type": "string",
-                "minLength": 1,
-                "maxLength": 24
+                "enum": ["vanguard", "mystic", "support"]
               },
               "mapId": {
                 "type": "string",
@@ -58,16 +51,8 @@
                 "additionalProperties": false,
                 "required": ["x", "y", "facing"],
                 "properties": {
-                  "x": {
-                    "type": "number",
-                    "minimum": -32,
-                    "maximum": 32
-                  },
-                  "y": {
-                    "type": "number",
-                    "minimum": -12,
-                    "maximum": 12
-                  },
+                  "x": { "type": "number", "minimum": -32, "maximum": 32 },
+                  "y": { "type": "number", "minimum": -32, "maximum": 32 },
                   "facing": {
                     "type": "number",
                     "minimum": -6.284,
@@ -75,18 +60,45 @@
                   }
                 }
               },
-              "movementSequence": {
-                "type": "integer",
-                "minimum": 0
+              "movementSequence": { "type": "integer", "minimum": 0 },
+              "health": { "type": "integer", "minimum": 0 },
+              "maxHealth": { "type": "integer", "minimum": 1 },
+              "mana": { "type": "integer", "minimum": 0 },
+              "maxMana": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "enemies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "mapId",
+              "position",
+              "health",
+              "maxHealth"
+            ],
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "mapId": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
               },
-              "health": {
-                "type": "integer",
-                "minimum": 0
+              "position": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["x", "y"],
+                "properties": {
+                  "x": { "type": "number", "minimum": -32, "maximum": 32 },
+                  "y": { "type": "number", "minimum": -32, "maximum": 32 }
+                }
               },
-              "maxHealth": {
-                "type": "integer",
-                "minimum": 1
-              }
+              "health": { "type": "integer", "minimum": 0 },
+              "maxHealth": { "type": "integer", "minimum": 1 }
             }
           }
         }

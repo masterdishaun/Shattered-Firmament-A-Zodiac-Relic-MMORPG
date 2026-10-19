@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import Fastify, {
   type FastifyInstance,
   type FastifyReply,
@@ -468,8 +468,8 @@ export const createApp = (
                 level, experience, cultivation_realm AS "cultivationRealm",
                 active_map_id AS "mapId",
                 json_build_object('x', position_x, 'y', position_y, 'facing', facing) AS position,
-                health, max_health AS "maxHealth",
-                created_at AS "createdAt", last_played_at AS "lastPlayedAt"
+                health, max_health AS "maxHealth", mana, max_mana AS "maxMana",
+                     created_at AS "createdAt", last_played_at AS "lastPlayedAt"
          FROM characters
          WHERE user_id = $1 AND status = 'active'
          ORDER BY last_played_at DESC NULLS LAST, created_at ASC`,
@@ -523,7 +523,7 @@ export const createApp = (
                      level, experience, cultivation_realm AS "cultivationRealm",
                      active_map_id AS "mapId",
                      json_build_object('x', position_x, 'y', position_y, 'facing', facing) AS position,
-                     health, max_health AS "maxHealth",
+                     health, max_health AS "maxHealth", mana, max_mana AS "maxMana",
                      created_at AS "createdAt"`,
           [
             randomUUID(),
@@ -584,6 +584,7 @@ export const createApp = (
         const characterResult = await client.query<{
           id: string;
           name: string;
+          class_id: string;
           level: number;
           active_map_id: string;
           position_x: number;
@@ -591,8 +592,10 @@ export const createApp = (
           facing: number;
           health: number;
           max_health: number;
+          mana: number;
+          max_mana: number;
         }>(
-          `SELECT id, name, level, active_map_id, position_x, position_y, facing, health, max_health
+          `SELECT id, name, class_id, level, active_map_id, position_x, position_y, facing, health, max_health, mana, max_mana
            FROM characters
            WHERE id = $1 AND user_id = $2 AND status = 'active'
            FOR UPDATE`,
@@ -650,6 +653,9 @@ export const createApp = (
             },
             health: character.health,
             maxHealth: character.max_health,
+            classId: character.class_id,
+            mana: character.mana,
+            maxMana: character.max_mana,
           },
         };
       } catch (error) {

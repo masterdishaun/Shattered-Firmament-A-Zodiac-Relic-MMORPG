@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from "pg";
+﻿import type { Pool, PoolClient } from "pg";
 import { PROTOCOL_VERSION } from "@shattered-firmament/shared/protocol";
 import { hashOpaqueToken } from "./security.js";
 
@@ -28,11 +28,14 @@ export interface ConsumedJoinTicket {
     id: string;
     name: string;
     level: number;
+    classId: "vanguard" | "mystic" | "support";
     factionId: "sovereign_sect" | "ashen_syndicate" | "astral_concord";
     mapId: string;
     position: { x: number; y: number; facing: number };
     health: number;
     maxHealth: number;
+    mana: number;
+    maxMana: number;
   };
   destination: string;
   audience: string;
@@ -82,6 +85,7 @@ export async function consumeJoinTicket(
       character_status: string;
       name: string;
       level: number;
+      class_id: "vanguard" | "mystic" | "support";
       active_map_id: string;
       faction_id: "sovereign_sect" | "ashen_syndicate" | "astral_concord";
       position_x: number;
@@ -89,6 +93,8 @@ export async function consumeJoinTicket(
       facing: number;
       health: number;
       max_health: number;
+      mana: number;
+      max_mana: number;
     }>(
       `SELECT jt.id, jt.user_id, jt.session_id, jt.character_id,
               jt.destination, jt.audience, jt.protocol_version, jt.consumed_at,
@@ -97,8 +103,8 @@ export async function consumeJoinTicket(
               s.revoked_at AS session_revoked_at,
               u.status AS user_status,
               c.status AS character_status,
-              c.name, c.level, c.faction_id, c.active_map_id, c.position_x, c.position_y,
-              c.facing, c.health, c.max_health
+              c.name, c.level, c.class_id, c.faction_id, c.active_map_id, c.position_x, c.position_y,
+              c.facing, c.health, c.max_health, c.mana, c.max_mana
        FROM join_tickets jt
        JOIN users u ON u.id = jt.user_id
        JOIN auth_sessions s ON s.id = jt.session_id AND s.user_id = jt.user_id
@@ -192,6 +198,7 @@ export async function consumeJoinTicket(
         id: ticket.character_id,
         name: ticket.name,
         level: ticket.level,
+        classId: ticket.class_id,
         factionId: ticket.faction_id,
         mapId: ticket.active_map_id,
         position: {
@@ -201,6 +208,8 @@ export async function consumeJoinTicket(
         },
         health: ticket.health,
         maxHealth: ticket.max_health,
+        mana: ticket.mana,
+        maxMana: ticket.max_mana,
       },
     };
   } catch (error) {

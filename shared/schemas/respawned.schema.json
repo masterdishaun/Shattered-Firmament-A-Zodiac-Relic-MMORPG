@@ -1,0 +1,44 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shattered-firmament.dev/schemas/respawned.schema.json",
+  "title": "RespawnedEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocolVersion", "payload"],
+  "properties": {
+    "type": { "const": "S2C_Respawned" },
+    "protocolVersion": { "const": 1 },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mapId",
+        "position",
+        "health",
+        "maxHealth",
+        "mana",
+        "maxMana"
+      ],
+      "properties": {
+        "mapId": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+        },
+        "position": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "facing"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "facing": { "type": "number" }
+          }
+        },
+        "health": { "type": "integer", "minimum": 1 },
+        "maxHealth": { "type": "integer", "minimum": 1 },
+        "mana": { "type": "integer", "minimum": 0 },
+        "maxMana": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

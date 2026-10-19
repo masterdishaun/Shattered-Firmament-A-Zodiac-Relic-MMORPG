@@ -140,3 +140,13 @@ PostgreSQL character leases distinguish active connections from disconnected ses
 - Attacks require a living attacker and target, the same map, an enabled non-safe PvP zone, an opposing faction, and melee range. Protected starts and Wayfarer Crossroads reject attacks; zone boundaries prevent cross-map attacks.
 - Accepted combat results are sent to clients currently in the same map. Rejections are returned to the attacker. World snapshots remain the authoritative health replication path.
 - This is a combat foundation, not a complete combat system: no ability system, PvE enemy AI, death/respawn, persistent combat health, animation, line-of-sight, or balance pass is claimed. Damage values are provisional.
+
+## Class abilities, PvE and respawn (Phase 16)
+
+- `C2S_AbilityIntent` contains only `abilityId` and `targetId`; the server resolves the class, target, map, range, resource cost and cooldown. No client-supplied damage or resource values are accepted.
+- Provisional class kit: Vanguard — Jade Strike (32 damage) and Iron Breaker (48 damage, 15 spirit); Mystic — Astral Bolt (24 damage, 20 spirit) and Starfall (42 damage, 35 spirit); Spirit Warden — Spirit Mend (28 healing, 25 spirit) and Resonant Pulse (18 damage, 15 spirit). All archetypes also have Basic Strike (20 damage). Numbers and names are tuning placeholders.
+- Characters have a 100-point spirit resource, regenerating at 4 points/second. Spirit and health persist with the existing world position checkpoint and are also saved on combat state changes.
+- The Ashen Frontier now has a server-owned Ashen Wisp. It acquires living players in its map, approaches within attack range, deals 8 damage every two seconds and respawns eight seconds after defeat. It is visible only to clients in the same map.
+- Health reaching zero disables movement and skills, preserves equipment, and triggers a five-second respawn at the character's own faction sanctuary with health and spirit restored. The respawn event is versioned; health/resource restoration is persisted.
+- Cooldowns are retained by character for the lifetime of the world room so a transient reconnect cannot immediately reset skill cooldowns. Long-lived cooldown persistence across server restarts is not required for these short provisional timers.
+- Controls: F uses Basic Strike on a nearby enemy or the existing basic PvP attack on a nearby opposing player; 1 uses the class primary skill; 2 uses the class secondary skill. Spirit Warden's primary skill heals the player.

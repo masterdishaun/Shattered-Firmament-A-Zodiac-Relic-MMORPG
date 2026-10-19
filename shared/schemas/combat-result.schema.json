@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://shattered-firmament.dev/schemas/combat-result.schema.json",
   "title": "CombatResultEnvelope",
@@ -22,9 +22,12 @@
       "properties": {
         "accepted": { "type": "boolean" },
         "attackerCharacterId": { "type": "string", "minLength": 1 },
-        "targetCharacterId": { "type": "string", "minLength": 1 },
+        "targetCharacterId": { "type": "string" },
         "damage": { "type": "integer", "minimum": 0 },
+        "healing": { "type": "integer", "minimum": 0 },
         "targetHealth": { "type": "integer", "minimum": 0 },
+        "resourceAfter": { "type": "integer", "minimum": 0 },
+        "abilityId": { "type": "string" },
         "reason": { "type": ["string", "null"] },
         "serverTick": { "type": "integer", "minimum": 0 }
       }

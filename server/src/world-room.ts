@@ -1,4 +1,4 @@
-import { Room, ServerError } from "@colyseus/core";
+﻿import { Room, ServerError } from "@colyseus/core";
 import type { Client } from "@colyseus/core";
 import type { Pool } from "pg";
 import {
@@ -6,12 +6,21 @@ import {
   type RoomJoinSuccess,
   type WorldSnapshotEnvelope,
   type CombatResultEnvelope,
+  type WorldEnemySnapshot,
+  type RespawnedEnvelope,
 } from "@shattered-firmament/shared/protocol";
 import {
   COMBAT_RULES,
   parseCombatIntent,
   resolveBasicAttack,
 } from "./combat.js";
+import {
+  ABILITIES,
+  ABILITY_RULES,
+  parseAbilityIntent,
+  resolveAbility,
+} from "./abilities.js";
+import { createAshenWisp, stepEnemy, type PveEnemy } from "./pve.js";
 import {
   FACTION_START_ZONE,
   isPositionWalkable,
@@ -46,11 +55,17 @@ interface WorldPlayerRuntime extends PlayerMovementState {
   userId: string;
   sessionId: string;
   characterId: string;
+  classId: "vanguard" | "mystic" | "support";
   name: string;
   mapId: string;
   factionId: FactionId;
   health: number;
   maxHealth: number;
+  mana: number;
+  maxMana: number;
+  abilityCooldowns: Map<string, number>;
+  lastAbilityIntentAtMs: number;
+  respawnAtMs: number;
   lastIntentAtMs: number;
   invalidIntentCount: number;
   lastCombatIntentAtMs: number;
@@ -71,17 +86,27 @@ export class WorldRoom extends Room<
   private pool!: Pool;
   private readonly authenticatedClients = new Map<string, ConsumedJoinTicket>();
   private readonly playerStates = new Map<string, WorldPlayerRuntime>();
+  private readonly enemies = new Map<string, PveEnemy>();
+  private readonly characterAbilityCooldowns = new Map<
+    string,
+    Map<string, number>
+  >();
   private positionPersistenceQueue: Promise<void> = Promise.resolve();
   private positionCheckpointInFlight = false;
   private serverTick = 0;
 
   override onCreate(options: WorldRoomOptions) {
     this.pool = options.pool;
+    const wisp = createAshenWisp(Date.now());
+    this.enemies.set(wisp.id, wisp);
     this.onMessage("C2S_MoveIntent", (client, message: unknown) => {
       this.handleMoveIntent(client, message);
     });
     this.onMessage("C2S_CombatIntent", (client, message: unknown) => {
       this.handleCombatIntent(client, message);
+    });
+    this.onMessage("C2S_AbilityIntent", (client, message: unknown) => {
+      this.handleAbilityIntent(client, message);
     });
     this.onMessage("C2S_ZoneTransition", (client, message: unknown) => {
       this.handleZoneTransition(client, message);
@@ -146,6 +171,7 @@ export class WorldRoom extends Room<
       userId: auth.userId,
       sessionId: client.sessionId,
       characterId: auth.character.id,
+      classId: auth.character.classId,
       name: auth.character.name,
       mapId,
       factionId,
@@ -159,11 +185,24 @@ export class WorldRoom extends Room<
       axisY: 0,
       health: auth.character.health,
       maxHealth: auth.character.maxHealth,
+      mana: auth.character.mana,
+      maxMana: auth.character.maxMana,
+      abilityCooldowns:
+        this.characterAbilityCooldowns.get(auth.character.id) ?? new Map(),
+      lastAbilityIntentAtMs: 0,
+      respawnAtMs:
+        auth.character.health <= 0
+          ? Date.now() + ABILITY_RULES.respawnDelayMs
+          : 0,
       lastIntentAtMs: 0,
       invalidIntentCount: 0,
       lastCombatIntentAtMs: 0,
       lastAttackAtMs: 0,
     };
+    this.characterAbilityCooldowns.set(
+      auth.character.id,
+      state.abilityCooldowns,
+    );
     this.playerStates.set(client.sessionId, state);
 
     const message: RoomJoinSuccess = {
@@ -175,6 +214,7 @@ export class WorldRoom extends Room<
         shardId: "world-main",
         character: {
           characterId: auth.character.id,
+          classId: auth.character.classId,
           name: auth.character.name,
           level: auth.character.level,
           mapId: state.mapId,
@@ -185,6 +225,8 @@ export class WorldRoom extends Room<
           },
           health: state.health,
           maxHealth: state.maxHealth,
+          mana: Math.floor(state.mana),
+          maxMana: state.maxMana,
           movementSequence: state.movementSequence,
         },
         world: {
@@ -230,7 +272,7 @@ export class WorldRoom extends Room<
 
   private handleMoveIntent(client: Client, message: unknown) {
     const state = this.playerStates.get(client.sessionId);
-    if (!state) return;
+    if (!state || state.health <= 0) return;
 
     const now = Date.now();
     if (now - state.lastIntentAtMs < WORLD_MOVEMENT.minimumIntentIntervalMs) {
@@ -253,6 +295,114 @@ export class WorldRoom extends Room<
     state.lastIntentAtMs = now;
     state.invalidIntentCount = 0;
     applyMoveIntent(state, intent);
+  }
+
+  private handleAbilityIntent(client: Client, message: unknown) {
+    const actor = this.playerStates.get(client.sessionId);
+    if (!actor || actor.health <= 0) return;
+    const now = Date.now();
+    if (now - actor.lastAbilityIntentAtMs < 100) return;
+    actor.lastAbilityIntentAtMs = now;
+    const intent = parseAbilityIntent(message);
+    if (!intent) {
+      this.sendCombatResult(client, actor.characterId, "", {
+        accepted: false,
+        reason: "INVALID_INTENT",
+        damage: 0,
+      });
+      return;
+    }
+    const enemy = this.enemies.get(intent.targetId);
+    const targetEntry = [...this.playerStates.entries()].find(
+      ([, state]) => state.characterId === intent.targetId,
+    );
+    const targetPlayer = targetEntry?.[1];
+    const target = enemy
+      ? {
+          characterId: enemy.id,
+          factionId: "wild",
+          mapId: enemy.mapId,
+          x: enemy.x,
+          y: enemy.y,
+          health: enemy.health,
+          maxHealth: enemy.maxHealth,
+          kind: "enemy" as const,
+        }
+      : targetPlayer
+        ? {
+            characterId: targetPlayer.characterId,
+            factionId: targetPlayer.factionId,
+            mapId: targetPlayer.mapId,
+            x: targetPlayer.x,
+            y: targetPlayer.y,
+            health: targetPlayer.health,
+            maxHealth: targetPlayer.maxHealth,
+            kind: "player" as const,
+          }
+        : undefined;
+    const actorView = {
+      characterId: actor.characterId,
+      factionId: actor.factionId,
+      classId: actor.classId,
+      mapId: actor.mapId,
+      x: actor.x,
+      y: actor.y,
+      health: actor.health,
+      maxHealth: actor.maxHealth,
+      resource: actor.mana,
+    };
+    const ability = ABILITIES[intent.abilityId];
+    const result = resolveAbility({
+      actor: actorView,
+      target,
+      abilityId: intent.abilityId,
+      nowMs: now,
+      lastUsedAtMs: actor.abilityCooldowns.get(intent.abilityId) ?? 0,
+    });
+    if (result.accepted && target) {
+      actor.mana = result.resourceAfter ?? actor.mana;
+      actor.abilityCooldowns.set(intent.abilityId, now);
+      if (enemy) {
+        enemy.health = result.targetHealth ?? enemy.health;
+        if (enemy.health <= 0) {
+          enemy.respawnAtMs = now + 8_000;
+          enemy.aggroCharacterId = "";
+        }
+      } else if (targetPlayer) {
+        targetPlayer.health = result.targetHealth ?? targetPlayer.health;
+        if (targetPlayer.health <= 0)
+          targetPlayer.respawnAtMs = now + ABILITY_RULES.respawnDelayMs;
+        void this.queuePositionPersistence([targetPlayer]);
+      }
+      void this.queuePositionPersistence([actor]);
+    }
+    const envelope: CombatResultEnvelope = {
+      type: "S2C_CombatResult",
+      protocolVersion: PROTOCOL_VERSION,
+      payload: {
+        accepted: result.accepted,
+        attackerCharacterId: actor.characterId,
+        targetCharacterId: intent.targetId,
+        damage: result.damage,
+        healing: result.healing,
+        ...(result.targetHealth === undefined
+          ? {}
+          : { targetHealth: result.targetHealth }),
+        ...(result.resourceAfter === undefined
+          ? {}
+          : { resourceAfter: result.resourceAfter }),
+        abilityId: intent.abilityId,
+        reason: result.reason ?? null,
+        serverTick: this.serverTick,
+      },
+    };
+    if (result.accepted) {
+      for (const recipient of this.clients) {
+        const recipientState = this.playerStates.get(recipient.sessionId);
+        if (recipientState?.mapId === actor.mapId)
+          recipient.send("S2C_CombatResult", envelope);
+      }
+    } else client.send("S2C_CombatResult", envelope);
   }
 
   private handleZoneTransition(client: Client, message: unknown) {
@@ -360,6 +510,9 @@ export class WorldRoom extends Room<
     if (result.accepted && target) {
       target.health = result.targetHealth ?? target.health;
       attacker.lastAttackAtMs = now;
+      if (target.health <= 0)
+        target.respawnAtMs = now + ABILITY_RULES.respawnDelayMs;
+      void this.queuePositionPersistence([target]);
     }
     const envelope: CombatResultEnvelope = {
       type: "S2C_CombatResult",
@@ -417,10 +570,73 @@ export class WorldRoom extends Room<
   }
   private simulateWorld() {
     this.serverTick += 1;
+    const now = Date.now();
     for (const state of this.playerStates.values()) {
+      if (state.health <= 0) {
+        if (state.respawnAtMs > 0 && now >= state.respawnAtMs) {
+          const respawnMap = FACTION_START_ZONE[state.factionId];
+          state.mapId = respawnMap;
+          const spawn = zoneFallbackSpawn(respawnMap);
+          state.x = spawn.x;
+          state.y = spawn.y;
+          state.facing = 0;
+          state.health = state.maxHealth;
+          state.mana = state.maxMana;
+          state.respawnAtMs = 0;
+          state.axisX = 0;
+          state.axisY = 0;
+          const client = this.clients.find(
+            (candidate) => candidate.sessionId === state.sessionId,
+          );
+          const respawned: RespawnedEnvelope = {
+            type: "S2C_Respawned",
+            protocolVersion: PROTOCOL_VERSION,
+            payload: {
+              mapId: state.mapId,
+              position: { x: state.x, y: state.y, facing: state.facing },
+              health: state.health,
+              maxHealth: state.maxHealth,
+              mana: state.mana,
+              maxMana: state.maxMana,
+            },
+          };
+          client?.send("S2C_Respawned", respawned);
+          void this.queuePositionPersistence([state]);
+        }
+        continue;
+      }
+      state.mana = Math.min(
+        state.maxMana,
+        state.mana +
+          ABILITY_RULES.resourceRegenerationPerSecond *
+            WORLD_MOVEMENT.stepSeconds,
+      );
       stepPlayerMovement(state, WORLD_MOVEMENT.stepSeconds, state.mapId);
     }
-
+    for (const enemy of this.enemies.values()) {
+      const result = stepEnemy(
+        enemy,
+        [...this.playerStates.values()],
+        WORLD_MOVEMENT.stepSeconds,
+        now,
+      );
+      if (!result) continue;
+      const target = [...this.playerStates.values()].find(
+        (state) => state.characterId === result.targetCharacterId,
+      );
+      if (!target || target.health <= 0) continue;
+      target.health = Math.max(0, target.health - result.damage);
+      if (target.health <= 0)
+        target.respawnAtMs = now + ABILITY_RULES.respawnDelayMs;
+      void this.queuePositionPersistence([target]);
+      this.broadcastCombatResult(target.mapId, {
+        accepted: true,
+        attackerCharacterId: enemy.id,
+        targetCharacterId: target.characterId,
+        damage: result.damage,
+        reason: null,
+      });
+    }
     if (this.clients.length === 0) return;
     const serverTime = new Date().toISOString();
     for (const client of this.clients) {
@@ -432,22 +648,53 @@ export class WorldRoom extends Room<
         payload: {
           serverTick: this.serverTick,
           serverTime,
-          // Zone membership is authoritative: clients only receive presence for their own map.
           players: [...this.playerStates.values()]
             .filter((state) => state.mapId === recipient.mapId)
             .map((state) => ({
               characterId: state.characterId,
               name: state.name,
+              classId: state.classId,
               mapId: state.mapId,
               position: { x: state.x, y: state.y, facing: state.facing },
               movementSequence: state.movementSequence,
               health: state.health,
               maxHealth: state.maxHealth,
+              mana: Math.floor(state.mana),
+              maxMana: state.maxMana,
+            })),
+          enemies: [...this.enemies.values()]
+            .filter((enemy) => enemy.mapId === recipient.mapId)
+            .map((enemy): WorldEnemySnapshot => ({
+              id: enemy.id,
+              name: enemy.name,
+              mapId: enemy.mapId,
+              position: { x: enemy.x, y: enemy.y },
+              health: enemy.health,
+              maxHealth: enemy.maxHealth,
             })),
         },
       };
       client.send("S2C_WorldSnapshot", snapshot);
     }
+  }
+  private broadcastCombatResult(
+    mapId: string,
+    result: {
+      accepted: boolean;
+      attackerCharacterId: string;
+      targetCharacterId: string;
+      damage: number;
+      reason: string | null;
+    },
+  ) {
+    const envelope: CombatResultEnvelope = {
+      type: "S2C_CombatResult",
+      protocolVersion: PROTOCOL_VERSION,
+      payload: { ...result, serverTick: this.serverTick },
+    };
+    for (const client of this.clients)
+      if (this.playerStates.get(client.sessionId)?.mapId === mapId)
+        client.send("S2C_CombatResult", envelope);
   }
 
   private async persistActivePositions() {
@@ -471,6 +718,8 @@ export class WorldRoom extends Room<
       position_y: state.y,
       map_id: state.mapId,
       facing: state.facing,
+      health: state.health,
+      mana: Math.floor(state.mana),
     }));
 
     this.positionPersistenceQueue = this.positionPersistenceQueue
@@ -481,6 +730,8 @@ export class WorldRoom extends Room<
             "    position_y = p.position_y,\n" +
             "    active_map_id = p.map_id,\n" +
             "    facing = p.facing,\n" +
+            "    health = p.health,\n" +
+            "    mana = p.mana,\n" +
             "    updated_at = now(),\n" +
             "    last_played_at = now()\n" +
             "FROM jsonb_to_recordset($1::jsonb) AS p(\n" +
@@ -489,7 +740,9 @@ export class WorldRoom extends Room<
             "  position_x DOUBLE PRECISION,\n" +
             "  position_y DOUBLE PRECISION,\n" +
             "  map_id TEXT,\n" +
-            "  facing DOUBLE PRECISION\n" +
+            "  facing DOUBLE PRECISION,\n" +
+            "  health INTEGER,\n" +
+            "  mana INTEGER\n" +
             ")\n" +
             "WHERE c.id = p.character_id AND c.user_id = p.user_id",
           [JSON.stringify(rows)],

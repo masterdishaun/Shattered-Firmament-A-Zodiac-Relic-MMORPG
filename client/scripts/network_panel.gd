@@ -508,10 +508,17 @@ func _on_room_message(message_type: Variant, data: Variant) -> void:
 	var payload: Dictionary = envelope.get("payload", {})
 	if message_name == "S2C_CombatResult":
 		combat_result.emit(payload)
-		if bool(payload.get("accepted", false)):
-			_set_status("Hit target for %d damage." % int(payload.get("damage", 0)))
-		else:
+		if not bool(payload.get("accepted", false)):
 			_set_status("Attack rejected: %s." % String(payload.get("reason", "unknown")))
+		elif int(payload.get("healing", 0)) > 0:
+			_set_status("Restored %d health." % int(payload.get("healing", 0)))
+		else:
+			_set_status("Hit target for %d damage." % int(payload.get("damage", 0)))
+		return
+	if message_name == "S2C_Respawned":
+		current_map_id = String(payload.get("mapId", current_map_id))
+		zone_changed.emit(payload)
+		_set_status("You have returned to your faction sanctuary.")
 		return
 	if message_name == "S2C_WorldSnapshot":
 		last_world_snapshot = payload
@@ -540,12 +547,8 @@ func _on_room_message(message_type: Variant, data: Variant) -> void:
 	world_joined.emit(character)
 	_set_status(
 		"Connected to Colyseus room %s as %s. Movement and combat are server-authoritative."
-		% [
-			String(payload.get("roomId", "unknown")),
-			String(character.get("name", "character"))
-		]
+		% [String(payload.get("roomId", "unknown")), String(character.get("name", "character"))]
 	)
-
 
 func request_zone_transition(target_map_id: String) -> void:
 	if not world_connected or game_room == null or target_map_id.is_empty():
@@ -557,6 +560,12 @@ func send_basic_attack(target_character_id: String) -> void:
 	if not world_connected or game_room == null or target_character_id.is_empty():
 		return
 	game_room.call("send", "C2S_CombatIntent", {"targetCharacterId": target_character_id})
+
+
+func send_ability(ability_id: String, target_id: String) -> void:
+	if not world_connected or game_room == null or ability_id.is_empty() or target_id.is_empty():
+		return
+	game_room.call("send", "C2S_AbilityIntent", {"abilityId": ability_id, "targetId": target_id})
 
 
 func send_move_intent(axis_x: float, axis_y: float) -> int:

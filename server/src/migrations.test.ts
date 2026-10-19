@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -51,6 +51,7 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
   it("applies the initial schema and is idempotent", async () => {
     const first = await runMigrations(pool);
     expect(first.applied).toContain("0001_initial.sql");
+    expect(first.applied).toContain("0002_character_mana.sql");
 
     const tables = await pool.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
@@ -85,9 +86,20 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
       "disconnected_at",
     );
 
+    const characterColumns = await pool.query<{ column_name: string }>(
+      "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'characters'",
+    );
+    expect(characterColumns.rows.map((row) => row.column_name)).toContain(
+      "mana",
+    );
+    expect(characterColumns.rows.map((row) => row.column_name)).toContain(
+      "max_mana",
+    );
+
     const second = await runMigrations(pool);
     expect(second.applied).toEqual([]);
     expect(second.skipped).toContain("0001_initial.sql");
+    expect(second.skipped).toContain("0002_character_mana.sql");
   });
 
   it("enforces case-insensitive account uniqueness and valid character factions", async () => {
