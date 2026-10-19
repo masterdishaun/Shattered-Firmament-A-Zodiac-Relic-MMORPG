@@ -1,0 +1,20 @@
+{
+  "name": "@shattered-firmament/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./content": "./dist/content.js",
+    "./protocol": "./dist/protocol.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test",
+    "lint": "prettier --check ."
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "typescript": "^5.8.0"
+  }
+}

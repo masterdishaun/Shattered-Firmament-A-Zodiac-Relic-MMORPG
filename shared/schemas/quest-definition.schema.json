@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shattered-firmament.invalid/schemas/quest-definition.schema.json",
+  "title": "Shattered Firmament Quest Definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "title",
+    "availability",
+    "levelMin",
+    "levelMax",
+    "mode",
+    "prerequisiteQuestIds",
+    "objectives",
+    "rewardTableId",
+    "choiceFlagIds",
+    "essentialProgression"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "availability": { "enum": ["faction", "shared"] },
+    "factionIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["sovereign_sect", "ashen_syndicate", "astral_concord"]
+      }
+    },
+    "levelMin": { "type": "integer", "minimum": 1, "maximum": 100 },
+    "levelMax": { "type": "integer", "minimum": 1, "maximum": 100 },
+    "mode": {
+      "enum": [
+        "solo_story",
+        "solo_side",
+        "party_dungeon",
+        "raid",
+        "world_event"
+      ]
+    },
+    "prerequisiteQuestIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "objectives": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description", "targetCount", "optional"],
+        "properties": {
+          "id": { "type": "string" },
+          "description": { "type": "string", "minLength": 1 },
+          "targetCount": { "type": "integer", "minimum": 1 },
+          "optional": { "type": "boolean" }
+        }
+      }
+    },
+    "rewardTableId": { "type": "string" },
+    "choiceFlagIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "essentialProgression": { "type": "boolean" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "availability": { "const": "faction" } } },
+      "then": {
+        "required": ["factionIds"],
+        "properties": { "factionIds": { "type": "array", "minItems": 1 } }
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "sovereign_sect",
+    "name": "Sovereign Sect",
+    "philosophy": "law",
+    "motto": "A world without order is a world where the powerful devour the helpless.",
+    "startingRegionId": "white_jade_bastion",
+    "openingQuestlineId": "sovereign_the_ward_that_lied",
+    "coreBlindSpot": "Can mistake obedience for peace and justify censorship as protection."
+  },
+  {
+    "id": "ashen_syndicate",
+    "name": "Ashen Syndicate",
+    "philosophy": "chaos",
+    "motto": "No throne owns the future.",
+    "startingRegionId": "cinderwake",
+    "openingQuestlineId": "ashen_the_shard_that_sang",
+    "coreBlindSpot": "Can excuse exploitation and danger as the price of freedom."
+  },
+  {
+    "id": "astral_concord",
+    "name": "Astral Concord",
+    "philosophy": "balance",
+    "motto": "Power must answer to the life it touches.",
+    "startingRegionId": "luminous_veil",
+    "openingQuestlineId": "concord_the_forest_that_remembered",
+    "coreBlindSpot": "Can delay necessary action by treating every crisis as a problem that can be healed through patience."
+  }
+]

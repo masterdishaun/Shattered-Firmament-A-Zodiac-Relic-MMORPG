@@ -1,0 +1,860 @@
+﻿[
+  {
+    "id": "sovereign.ward-that-lied",
+    "version": 1,
+    "title": "The Ward That Lied",
+    "availability": "faction",
+    "factionIds": ["sovereign_sect"],
+    "levelMin": 1,
+    "levelMax": 20,
+    "mode": "solo_story",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "sovereign.ward-that-lied.obj1",
+        "description": "Investigate the failed ward-engine",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.ward-that-lied.obj2",
+        "description": "Recover the missing jade seal",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.ward-that-lied.obj3",
+        "description": "Enter the Underterrace Archive",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.ward-that-lied.obj4",
+        "description": "Present verified evidence to the inquiry",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.sovereign.ward_that_lied",
+    "choiceFlagIds": ["sovereign.archive_disposition"],
+    "essentialProgression": false
+  },
+  {
+    "id": "ashen.shard-that-sang",
+    "version": 1,
+    "title": "The Shard That Sang",
+    "availability": "faction",
+    "factionIds": ["ashen_syndicate"],
+    "levelMin": 1,
+    "levelMax": 20,
+    "mode": "solo_story",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "ashen.shard-that-sang.obj1",
+        "description": "Secure the living Zodiac scale",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.shard-that-sang.obj2",
+        "description": "Rescue workers from the failing extraction rig",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.shard-that-sang.obj3",
+        "description": "Enter the Cinder Vault",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.shard-that-sang.obj4",
+        "description": "Submit evidence to the workers\u0027 council",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.ashen.shard_that_sang",
+    "choiceFlagIds": ["ashen.site_future"],
+    "essentialProgression": false
+  },
+  {
+    "id": "concord.forest-that-remembered",
+    "version": 1,
+    "title": "The Forest That Remembered",
+    "availability": "faction",
+    "factionIds": ["astral_concord"],
+    "levelMin": 1,
+    "levelMax": 20,
+    "mode": "solo_story",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "concord.forest-that-remembered.obj1",
+        "description": "Follow the spirit-beast\u0027s memory trail",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.forest-that-remembered.obj2",
+        "description": "Stabilise the river shrine",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.forest-that-remembered.obj3",
+        "description": "Enter the Drowned Shrine",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.forest-that-remembered.obj4",
+        "description": "Establish consent for the new rite",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.concord.forest_that_remembered",
+    "choiceFlagIds": ["concord.ritual_consent"],
+    "essentialProgression": false
+  },
+  {
+    "id": "sovereign.names-we-sealed",
+    "version": 1,
+    "title": "The Names We Sealed",
+    "availability": "faction",
+    "factionIds": ["sovereign_sect"],
+    "levelMin": 5,
+    "levelMax": 10,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "sovereign.names-we-sealed.obj1",
+        "description": "Recover the evacuation ledger tablets",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.names-we-sealed.obj2",
+        "description": "Find the families named in the ledger",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.names-we-sealed.obj3",
+        "description": "Deliver verified memorial records",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.sovereign.names_we_sealed",
+    "choiceFlagIds": ["sovereign.ledger_publication"],
+    "essentialProgression": false
+  },
+  {
+    "id": "sovereign.price-quiet-street",
+    "version": 1,
+    "title": "The Price of a Quiet Street",
+    "availability": "faction",
+    "factionIds": ["sovereign_sect"],
+    "levelMin": 8,
+    "levelMax": 14,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "sovereign.price-quiet-street.obj1",
+        "description": "Interview three households",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.price-quiet-street.obj2",
+        "description": "Inspect confiscated relics",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.price-quiet-street.obj3",
+        "description": "Propose a transparent inspection process",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.sovereign.price_quiet_street",
+    "choiceFlagIds": ["sovereign.relic_policy"],
+    "essentialProgression": false
+  },
+  {
+    "id": "sovereign.sword-unarmed",
+    "version": 1,
+    "title": "A Sword for the Unarmed",
+    "availability": "faction",
+    "factionIds": ["sovereign_sect"],
+    "levelMin": 12,
+    "levelMax": 18,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "sovereign.sword-unarmed.obj1",
+        "description": "Train the neighbourhood volunteers",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.sword-unarmed.obj2",
+        "description": "Defend the supply convoy",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.sword-unarmed.obj3",
+        "description": "Establish a community protection charter",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.sovereign.sword_unarmed",
+    "choiceFlagIds": ["sovereign.community_defence"],
+    "essentialProgression": false
+  },
+  {
+    "id": "sovereign.unsent-letters",
+    "version": 1,
+    "title": "The Marshal\u0027s Unsent Letters",
+    "availability": "faction",
+    "factionIds": ["sovereign_sect"],
+    "levelMin": 16,
+    "levelMax": 20,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "sovereign.unsent-letters.obj1",
+        "description": "Track the missing courier",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.unsent-letters.obj2",
+        "description": "Recover the sealed letters",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "sovereign.unsent-letters.obj3",
+        "description": "Deliver the letters to the affected families",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.sovereign.unsent_letters",
+    "choiceFlagIds": ["sovereign.letters_disposition"],
+    "essentialProgression": false
+  },
+  {
+    "id": "ashen.last-shift",
+    "version": 1,
+    "title": "The Last Shift",
+    "availability": "faction",
+    "factionIds": ["ashen_syndicate"],
+    "levelMin": 5,
+    "levelMax": 10,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "ashen.last-shift.obj1",
+        "description": "Stabilise the extraction gate",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.last-shift.obj2",
+        "description": "Rescue trapped workers",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.last-shift.obj3",
+        "description": "Document unsafe extraction orders",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.ashen.last_shift",
+    "choiceFlagIds": ["ashen.evidence_release"],
+    "essentialProgression": false
+  },
+  {
+    "id": "ashen.market-memories",
+    "version": 1,
+    "title": "A Market for Stolen Memories",
+    "availability": "faction",
+    "factionIds": ["ashen_syndicate"],
+    "levelMin": 8,
+    "levelMax": 14,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "ashen.market-memories.obj1",
+        "description": "Trace the memory-fragment buyer",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.market-memories.obj2",
+        "description": "Identify fragments taken without consent",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.market-memories.obj3",
+        "description": "Recover the dangerous fragment",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.ashen.market_memories",
+    "choiceFlagIds": ["ashen.memory_market"],
+    "essentialProgression": false
+  },
+  {
+    "id": "ashen.free-hand",
+    "version": 1,
+    "title": "The Price of a Free Hand",
+    "availability": "faction",
+    "factionIds": ["ashen_syndicate"],
+    "levelMin": 12,
+    "levelMax": 18,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "ashen.free-hand.obj1",
+        "description": "Investigate the protection fee",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.free-hand.obj2",
+        "description": "Defend the community workshop",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.free-hand.obj3",
+        "description": "Negotiate a public charter",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.ashen.free_hand",
+    "choiceFlagIds": ["ashen.community_charter"],
+    "essentialProgression": false
+  },
+  {
+    "id": "ashen.beast-furnace",
+    "version": 1,
+    "title": "The Beast in the Furnace",
+    "availability": "faction",
+    "factionIds": ["ashen_syndicate"],
+    "levelMin": 16,
+    "levelMax": 20,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "ashen.beast-furnace.obj1",
+        "description": "Inspect the unstable furnace",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.beast-furnace.obj2",
+        "description": "Gather non-harmful stabilisers",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "ashen.beast-furnace.obj3",
+        "description": "Calm the celestial beast",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.ashen.beast_furnace",
+    "choiceFlagIds": ["ashen.beast_resolution"],
+    "essentialProgression": false
+  },
+  {
+    "id": "concord.names-river",
+    "version": 1,
+    "title": "The Names the River Keeps",
+    "availability": "faction",
+    "factionIds": ["astral_concord"],
+    "levelMin": 5,
+    "levelMax": 10,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "concord.names-river.obj1",
+        "description": "Recover three named objects from the river",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.names-river.obj2",
+        "description": "Locate the living descendants",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.names-river.obj3",
+        "description": "Hold a remembrance rite",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.concord.names_river",
+    "choiceFlagIds": ["concord.memory_custody"],
+    "essentialProgression": false
+  },
+  {
+    "id": "concord.beast-tool",
+    "version": 1,
+    "title": "A Beast Is Not a Tool",
+    "availability": "faction",
+    "factionIds": ["astral_concord"],
+    "levelMin": 8,
+    "levelMax": 14,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "concord.beast-tool.obj1",
+        "description": "Investigate the fox spirit\u0027s attacks",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.beast-tool.obj2",
+        "description": "Locate its injured litter",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.beast-tool.obj3",
+        "description": "Create a safe route away from the village",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.concord.beast_tool",
+    "choiceFlagIds": ["concord.fox_sanctuary"],
+    "essentialProgression": false
+  },
+  {
+    "id": "concord.healer-choice",
+    "version": 1,
+    "title": "The Healer Who Would Not Choose",
+    "availability": "faction",
+    "factionIds": ["astral_concord"],
+    "levelMin": 12,
+    "levelMax": 18,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "concord.healer-choice.obj1",
+        "description": "Gather medicine and shrine stabilisers",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.healer-choice.obj2",
+        "description": "Triage urgent cases",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.healer-choice.obj3",
+        "description": "Coordinate volunteers for the remaining work",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.concord.healer_choice",
+    "choiceFlagIds": ["concord.triage_priority"],
+    "essentialProgression": false
+  },
+  {
+    "id": "concord.quiet-cost",
+    "version": 1,
+    "title": "The Quiet That Costs Too Much",
+    "availability": "faction",
+    "factionIds": ["astral_concord"],
+    "levelMin": 16,
+    "levelMax": 20,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "concord.quiet-cost.obj1",
+        "description": "Interview residents affected by the rite",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.quiet-cost.obj2",
+        "description": "Test the ritual\u0027s boundary",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "concord.quiet-cost.obj3",
+        "description": "Propose a consent-based alternative",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.concord.quiet_cost",
+    "choiceFlagIds": ["concord.ritual_oversight"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.missing-roads",
+    "version": 1,
+    "title": "The Cartographer of Missing Roads",
+    "availability": "shared",
+    "levelMin": 21,
+    "levelMax": 30,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.missing-roads.obj1",
+        "description": "Escort the surveyors",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.missing-roads.obj2",
+        "description": "Recover three route markers",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.missing-roads.obj3",
+        "description": "Record the memory-only road",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.missing_roads",
+    "choiceFlagIds": ["shared.cartographer_trust"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.price-ashen-jade",
+    "version": 1,
+    "title": "The Price of Ashen-Jade",
+    "availability": "shared",
+    "levelMin": 25,
+    "levelMax": 35,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.price-ashen-jade.obj1",
+        "description": "Investigate the failing wells",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.price-ashen-jade.obj2",
+        "description": "Test safer extraction methods",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.price-ashen-jade.obj3",
+        "description": "Negotiate a settlement stewardship plan",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.price_ashen_jade",
+    "choiceFlagIds": ["shared.extraction_policy"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.twelve-plates",
+    "version": 1,
+    "title": "Twelve Plates, Eleven Names",
+    "availability": "shared",
+    "levelMin": 30,
+    "levelMax": 40,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.twelve-plates.obj1",
+        "description": "Recover the observatory plates",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.twelve-plates.obj2",
+        "description": "Compare three faction archives",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.twelve-plates.obj3",
+        "description": "Identify the scratched-out point",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.twelve_plates",
+    "choiceFlagIds": ["shared.archive_disclosure"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.hunter-returned",
+    "version": 1,
+    "title": "The Hunter Who Came Back",
+    "availability": "shared",
+    "levelMin": 35,
+    "levelMax": 45,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.hunter-returned.obj1",
+        "description": "Interview the returning hunter",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.hunter-returned.obj2",
+        "description": "Verify the memory evidence",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.hunter-returned.obj3",
+        "description": "Expose the hostility-manipulation protocol",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.hunter_returned",
+    "choiceFlagIds": ["shared.hunter_exoneration"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.feast-without-flags",
+    "version": 1,
+    "title": "A Feast Without Flags",
+    "availability": "shared",
+    "levelMin": 40,
+    "levelMax": 50,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.feast-without-flags.obj1",
+        "description": "Gather supplies for both communities",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.feast-without-flags.obj2",
+        "description": "Coordinate a shared meal",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.feast-without-flags.obj3",
+        "description": "Expose the quartermaster\u0027s profiteering",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.feast_without_flags",
+    "choiceFlagIds": ["shared.feast_resolution"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.guardian-name",
+    "version": 1,
+    "title": "The Guardian\u0027s First Name",
+    "availability": "shared",
+    "levelMin": 45,
+    "levelMax": 55,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.guardian-name.obj1",
+        "description": "Recover three memory sources",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.guardian-name.obj2",
+        "description": "Reconstruct the Guardian\u0027s original name",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.guardian-name.obj3",
+        "description": "Return the name to the shrine",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.guardian_name",
+    "choiceFlagIds": ["shared.guardian_response"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.auction-tomorrow",
+    "version": 1,
+    "title": "The Auction of Tomorrow",
+    "availability": "shared",
+    "levelMin": 55,
+    "levelMax": 65,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.auction-tomorrow.obj1",
+        "description": "Inspect forged prophecies",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.auction-tomorrow.obj2",
+        "description": "Protect affected buyers",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.auction-tomorrow.obj3",
+        "description": "Expose the broker\u0027s manipulation",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.auction_tomorrow",
+    "choiceFlagIds": ["shared.broker_outcome"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.village-voted-no",
+    "version": 1,
+    "title": "The Village That Voted No",
+    "availability": "shared",
+    "levelMin": 60,
+    "levelMax": 70,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.village-voted-no.obj1",
+        "description": "Hear the village council",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.village-voted-no.obj2",
+        "description": "Design a stewardship agreement",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.village-voted-no.obj3",
+        "description": "Defend the village without overriding its vote",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.village_voted_no",
+    "choiceFlagIds": ["shared.village_stewardship"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.twelve-shadows",
+    "version": 1,
+    "title": "Twelve Shadows at Dusk",
+    "availability": "shared",
+    "levelMin": 70,
+    "levelMax": 80,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.twelve-shadows.obj1",
+        "description": "Explore the fractured memory instance",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.twelve-shadows.obj2",
+        "description": "Collect twelve outcome fragments",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.twelve-shadows.obj3",
+        "description": "Deliver evidence to Tamsin Rook",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.twelve_shadows",
+    "choiceFlagIds": ["shared.hollow_regent_evidence"],
+    "essentialProgression": false
+  },
+  {
+    "id": "shared.last-unwritten-page",
+    "version": 1,
+    "title": "The Last Unwritten Page",
+    "availability": "shared",
+    "levelMin": 85,
+    "levelMax": 95,
+    "mode": "solo_side",
+    "prerequisiteQuestIds": [],
+    "objectives": [
+      {
+        "id": "shared.last-unwritten-page.obj1",
+        "description": "Recover Shen Veyu\u0027s journal fragments",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.last-unwritten-page.obj2",
+        "description": "Verify the competing faction claims",
+        "targetCount": 1,
+        "optional": false
+      },
+      {
+        "id": "shared.last-unwritten-page.obj3",
+        "description": "Publish the findings",
+        "targetCount": 1,
+        "optional": false
+      }
+    ],
+    "rewardTableId": "rewards.shared.last_unwritten_page",
+    "choiceFlagIds": ["shared.journal_publication"],
+    "essentialProgression": false
+  }
+]

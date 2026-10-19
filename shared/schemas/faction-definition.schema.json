@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shattered-firmament.invalid/schemas/faction-definition.schema.json",
+  "title": "Shattered Firmament Faction Definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "philosophy",
+    "motto",
+    "startingRegionId",
+    "openingQuestlineId",
+    "coreBlindSpot"
+  ],
+  "properties": {
+    "id": { "enum": ["sovereign_sect", "ashen_syndicate", "astral_concord"] },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "philosophy": { "enum": ["law", "chaos", "balance"] },
+    "motto": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "startingRegionId": { "type": "string", "minLength": 1 },
+    "openingQuestlineId": { "type": "string", "minLength": 1 },
+    "coreBlindSpot": { "type": "string", "minLength": 1, "maxLength": 500 }
+  }
+}
