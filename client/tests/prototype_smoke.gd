@@ -59,6 +59,31 @@ func _run_smoke_test() -> void:
 		_fail("Keyboard faction-start preview did not select White Jade Bastion.")
 		return
 
+	var remote_id := "remote-smoke-1"
+	scene._on_world_snapshot({
+		"serverTick": 1,
+		"players": [{
+			"characterId": remote_id,
+			"name": "Remote Test Hero",
+			"mapId": "cinderwake",
+			"position": {"x": 4.0, "y": 3.0, "facing": 0.5},
+			"movementSequence": 0,
+			"health": 100,
+			"maxHealth": 100
+		}]
+	})
+	if not scene.remote_avatars.has(remote_id):
+		_fail("A remote world snapshot did not create a remote avatar.")
+		return
+	var remote_avatar: Node3D = scene.remote_avatars[remote_id]
+	if not is_equal_approx(remote_avatar.global_position.x, 4.0):
+		_fail("The remote avatar did not initialize from its server position.")
+		return
+	scene._on_world_snapshot({"serverTick": 2, "players": []})
+	if scene.remote_avatars.has(remote_id):
+		_fail("A remote avatar was not removed after leaving the world snapshot.")
+		return
+
 	print("GODOT_PROTOTYPE_SMOKE=PASS")
 	scene.queue_free()
 	await process_frame

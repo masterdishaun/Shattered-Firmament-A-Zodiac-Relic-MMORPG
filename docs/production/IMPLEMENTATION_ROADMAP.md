@@ -158,3 +158,11 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Godot sends only movement axes and sequence numbers while connected, stops local movement simulation, and interpolates the avatar toward authoritative snapshots.
 - End-to-end test passed against disposable PostgreSQL 17 plus the local API/Colyseus server: account lifecycle, faction spawn, one-time ticket, room handshake, snapshot receipt, server-side movement, position persistence after disconnect, and logout. Server unit tests cover invalid inputs, speed normalization, bounds and safe time steps.
 - Still open: remote player rendering, prediction/reconciliation, per-zone collision/transition checks, PvP/combat, reconnect recovery, and production load/security testing.
+
+## Progress log - Phase 11 two-client world presence
+
+- Added client-side remote-avatar rendering from authoritative world snapshots. Other characters are represented by faction-coloured capsule blockout models with name labels; their positions and facing interpolate toward server snapshots.
+- Removed remote avatars when a character disappears from the snapshot or the local client leaves the world. The client SDK no longer prints every world snapshot, keeping movement traffic out of logs.
+- Added client/tests/multiplayer_smoke.gd: two independent Godot clients register separate accounts, create characters in different faction start zones, join the world, observe each other, move one character via validated server inputs, verify the other client's snapshot, instantiate/check the remote avatar, and verify departure removes that avatar.
+- The two-client smoke test passed against the local API/Colyseus server and a disposable PostgreSQL 17 cluster. The script reported GODOT_MULTIPLAYER_SMOKE=PASS; temporary database and server were shut down and removed.
+- This verifies one-room multiplayer presence only. Separate zone rooms, collision/zone-transition enforcement, reconnect recovery, client prediction, combat/PvP and load testing remain open.

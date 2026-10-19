@@ -42,6 +42,8 @@ var prompt_label: Label
 var feedback_label: Label
 var hud_root: Control
 var network_panel: Control
+var remote_avatars: Dictionary = {}
+var remote_targets: Dictionary = {}
 var active_character_id := ""
 var last_applied_snapshot_tick := 0
 var has_authoritative_snapshot := false
@@ -65,10 +67,17 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if player == null or camera == null:
 		return
+	var blend := minf(1.0, delta * 18.0)
 	if network_panel != null and network_panel.world_connected and has_authoritative_snapshot:
-		var blend := minf(1.0, delta * 18.0)
 		player.global_position = player.global_position.lerp(authoritative_target_position, blend)
 		player.rotation.y = lerp_angle(player.rotation.y, authoritative_target_facing, blend)
+	for character_id in remote_targets:
+		var avatar: Node3D = remote_avatars.get(character_id)
+		var target: Dictionary = remote_targets[character_id]
+		if avatar == null:
+			continue
+		avatar.global_position = avatar.global_position.lerp(target["position"], blend)
+		avatar.rotation.y = lerp_angle(avatar.rotation.y, float(target["facing"]), blend)
 	camera.global_position = player.global_position + CAMERA_OFFSET
 	camera.look_at(player.global_position + Vector3(0.0, 0.8, 0.0), Vector3.UP)
 	hud_refresh_elapsed += delta
@@ -429,6 +438,7 @@ func _close_network_panel() -> void:
 
 
 func _on_world_joined(character: Dictionary) -> void:
+	_clear_remote_avatars()
 	active_character_id = String(character.get("characterId", active_character_id))
 	var position: Dictionary = character.get("position", {})
 	if position.has("x") and position.has("y"):
@@ -443,6 +453,7 @@ func _on_world_joined(character: Dictionary) -> void:
 
 
 func _on_world_snapshot(snapshot: Dictionary) -> void:
+	_update_remote_avatars(snapshot)
 	var server_tick := int(snapshot.get("serverTick", 0))
 	if server_tick <= last_applied_snapshot_tick:
 		return
@@ -466,11 +477,102 @@ func _on_world_snapshot(snapshot: Dictionary) -> void:
 		return
 
 
+
+func _update_remote_avatars(snapshot: Dictionary) -> void:
+	var present_ids: Dictionary = {}
+	for state in snapshot.get("players", []):
+		if not state is Dictionary:
+			continue
+		var character_id := String(state.get("characterId", ""))
+		if character_id.is_empty() or character_id == active_character_id:
+			continue
+		var position: Dictionary = state.get("position", {})
+		if not position.has("x") or not position.has("y"):
+			continue
+		var target_position := Vector3(
+			float(position["x"]),
+			0.04,
+			float(position["y"])
+		)
+		var facing := float(position.get("facing", 0.0))
+		present_ids[character_id] = true
+		if not remote_avatars.has(character_id):
+			var avatar := _create_remote_avatar(
+				character_id,
+				String(state.get("name", "Traveler")),
+				String(state.get("mapId", ""))
+			)
+			add_child(avatar)
+			avatar.global_position = target_position
+			avatar.rotation.y = facing
+			remote_avatars[character_id] = avatar
+		remote_targets[character_id] = {
+			"position": target_position,
+			"facing": facing
+		}
+	for character_id in remote_avatars.keys():
+		if not present_ids.has(character_id):
+			var avatar: Node3D = remote_avatars[character_id]
+			avatar.queue_free()
+			remote_avatars.erase(character_id)
+			remote_targets.erase(character_id)
+
+
+func _create_remote_avatar(character_id: String, display_name: String, map_id: String) -> Node3D:
+	var avatar := Node3D.new()
+	avatar.name = "RemoteAvatar_" + character_id.replace("-", "").substr(0, 12)
+	avatar.set_meta("character_id", character_id)
+
+	var capsule := CapsuleMesh.new()
+	capsule.radius = 0.4
+	capsule.height = 1.6
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = capsule
+	var material := StandardMaterial3D.new()
+	material.albedo_color = _remote_avatar_color(map_id)
+	material.roughness = 0.8
+	mesh.material_override = material
+	mesh.position = Vector3(0.0, 0.8, 0.0)
+	avatar.add_child(mesh)
+
+	var name_label := Label3D.new()
+	name_label.text = display_name
+	name_label.position = Vector3(0.0, 1.8, 0.0)
+	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	name_label.font_size = 32
+	name_label.modulate = Color(0.92, 0.95, 1.0)
+	avatar.add_child(name_label)
+	return avatar
+
+
+func _remote_avatar_color(map_id: String) -> Color:
+	match map_id:
+		"white_jade_bastion":
+			return Color(0.72, 0.82, 1.0)
+		"cinderwake":
+			return Color(1.0, 0.38, 0.22)
+		"luminous_veil":
+			return Color(0.36, 0.86, 0.62)
+		_:
+			return Color(0.78, 0.78, 0.84)
+
+
+func _clear_remote_avatars() -> void:
+	for character_id in remote_avatars.keys():
+		var avatar: Node3D = remote_avatars[character_id]
+		avatar.queue_free()
+	remote_avatars.clear()
+	remote_targets.clear()
+
+
 func _on_network_status_changed(message: String) -> void:
 	feedback_label.text = message
+	if network_panel != null and not network_panel.world_connected:
+		_clear_remote_avatars()
 
 
 func _on_character_ticketed(character: Dictionary) -> void:
+	_clear_remote_avatars()
 	active_character_id = String(character.get("id", ""))
 	var map_id: String = String(character.get("mapId", ""))
 	var map_to_faction := {
