@@ -347,3 +347,62 @@ test("all dungeon encounters and reward entry types resolve to valid content", a
     }
   }
 });
+
+test("inventory item instances and trade offers enforce structural safety rules", async () => {
+  const [itemSchema, tradeSchema, tradeOffers, items] = await Promise.all([
+    loadSchema("item-instance"),
+    loadSchema("trade-offer"),
+    loadContent("trade-offers"),
+    loadContent("items"),
+  ]);
+  const validateItem = new Ajv2020({ allErrors: true }).compile(itemSchema);
+  const validateTrade = new Ajv2020({ allErrors: true }).compile(tradeSchema);
+  assert.ok(items.length > 0);
+  const itemInstance = {
+    instanceId: "c65c12b0-8b31-4b2a-9d62-6f4a0e1a1008",
+    ownerCharacterId: "c65c12b0-8b31-4b2a-9d62-6f4a0e1a1009",
+    definitionId: "weapon.training-jade-blade",
+    definitionVersion: 1,
+    quantity: 1,
+    upgradeLevel: 0,
+    equippedSlot: null,
+  };
+  assert.equal(
+    validateItem(itemInstance),
+    true,
+    JSON.stringify(validateItem.errors),
+  );
+  assert.equal(validateItem({ ...itemInstance, quantity: 0 }), false);
+  assert.equal(validateItem({ ...itemInstance, upgradeLevel: 31 }), false);
+  assert.equal(tradeOffers.length, 2);
+  for (const offer of tradeOffers) {
+    assert.equal(
+      validateTrade(offer),
+      true,
+      JSON.stringify(validateTrade.errors),
+    );
+    assert.ok(Date.parse(offer.expiresAt) > Date.parse(offer.createdAt));
+    assert.equal(
+      new Set(offer.offeredItems.map((item) => item.itemInstanceId)).size,
+      offer.offeredItems.length,
+    );
+  }
+  assert.equal(
+    validateTrade({
+      ...tradeOffers[0],
+      buyerCharacterId: tradeOffers[0].sellerCharacterId,
+    }),
+    false,
+    "Marketplace listings must not reserve a specific buyer.",
+  );
+  assert.equal(
+    validateTrade({ ...tradeOffers[1], buyerCharacterId: null }),
+    false,
+    "Direct offers must identify their intended buyer.",
+  );
+  assert.equal(
+    validateTrade({ ...tradeOffers[0], requestedAmount: 0 }),
+    false,
+    "A trade offer cannot request a zero or negative price.",
+  );
+});

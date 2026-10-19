@@ -99,3 +99,10 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Removed the transaction wrapper from the unreleased initial SQL draft so the runner can commit schema changes and the migration ledger record atomically.
 - Added integration tests for initial schema creation, idempotent reruns and checksum drift; executed against a disposable PostgreSQL 17 cluster on the workstation: 2 migration tests passed.
 - Added PostgreSQL 17 service and TEST_DATABASE_URL to GitHub Actions. CI must pass on the resulting commit before this phase is considered verified.
+
+## Progress log ? Phase 2 completion candidate and persistence integrity
+
+- Added inventory item-instance and trade-offer JSON Schemas plus sample direct and marketplace listings. Validation now rejects invalid UUID shapes, quantities, upgrade levels, prices, buyer/listing combinations and invalid timestamps.
+- Expanded PostgreSQL integration coverage to test case-insensitive account uniqueness, valid faction constraints, item definition references, positive inventory quantity, pet ownership isolation, join-ticket and active-lease composite account ownership, non-negative wallet balances, ledger idempotency, migration drift and failed-migration rollback.
+- Ran the full test suite against a disposable PostgreSQL 17 cluster: shared content 10/10, API and persistence 9/9. Build, TypeScript checks and lint pass. Temporary test cluster was shut down and removed.
+- This completes the content-contract and initial database-integrity slice. Authentication and character-selection endpoints are the next implementation milestone.

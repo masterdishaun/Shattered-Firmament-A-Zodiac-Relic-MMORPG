@@ -1,0 +1,38 @@
+[
+  {
+    "id": "c65c12b0-8b31-4b2a-9d62-6f4a0e1a1001",
+    "version": 1,
+    "listingType": "marketplace",
+    "sellerCharacterId": "c65c12b0-8b31-4b2a-9d62-6f4a0e1a1002",
+    "buyerCharacterId": null,
+    "offeredItems": [
+      {
+        "itemInstanceId": "c65c12b0-8b31-4b2a-9d62-6f4a0e1a1003",
+        "quantity": 1
+      }
+    ],
+    "requestedCurrencyCode": "silver",
+    "requestedAmount": 250,
+    "status": "open",
+    "createdAt": "2026-10-19T10:00:00Z",
+    "expiresAt": "2026-10-26T10:00:00Z"
+  },
+  {
+    "id": "c65c12b0-8b31-4b2a-9d62-6f4a0e1a1004",
+    "version": 1,
+    "listingType": "direct",
+    "sellerCharacterId": "c65c12b0-8b31-4b2a-9d62-6f4a0e1a1005",
+    "buyerCharacterId": "c65c12b0-8b31-4b2a-9d62-6f4a0e1a1006",
+    "offeredItems": [
+      {
+        "itemInstanceId": "c65c12b0-8b31-4b2a-9d62-6f4a0e1a1007",
+        "quantity": 2
+      }
+    ],
+    "requestedCurrencyCode": "silver",
+    "requestedAmount": 75,
+    "status": "open",
+    "createdAt": "2026-10-19T10:00:00Z",
+    "expiresAt": "2026-10-19T10:15:00Z"
+  }
+]

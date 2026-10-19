@@ -22,7 +22,8 @@ CREATE TABLE auth_sessions (
   replaced_by_session_id UUID REFERENCES auth_sessions(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_seen_at TIMESTAMPTZ,
-  CHECK (expires_at > created_at)
+  CHECK (expires_at > created_at),
+  UNIQUE (id, user_id)
 );
 CREATE INDEX auth_sessions_user_active_idx ON auth_sessions (user_id, expires_at) WHERE revoked_at IS NULL;
 
@@ -46,7 +47,8 @@ CREATE TABLE characters (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_played_at TIMESTAMPTZ,
-  CHECK (health <= max_health)
+  CHECK (health <= max_health),
+  UNIQUE (id, user_id)
 );
 CREATE UNIQUE INDEX characters_name_lower_uq ON characters (lower(name)) WHERE status <> 'deleted';
 CREATE INDEX characters_user_created_idx ON characters (user_id, created_at);
@@ -56,14 +58,15 @@ CREATE TABLE join_tickets (
   id UUID PRIMARY KEY,
   token_hash CHAR(64) NOT NULL UNIQUE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  character_id UUID NOT NULL,
   destination TEXT NOT NULL,
   audience TEXT NOT NULL,
   protocol_version INTEGER NOT NULL CHECK (protocol_version > 0),
   expires_at TIMESTAMPTZ NOT NULL,
   consumed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CHECK (expires_at > created_at)
+  CHECK (expires_at > created_at),
+  FOREIGN KEY (character_id, user_id) REFERENCES characters(id, user_id) ON DELETE CASCADE
 );
 CREATE INDEX join_tickets_expiry_idx ON join_tickets (expires_at) WHERE consumed_at IS NULL;
 CREATE INDEX join_tickets_character_idx ON join_tickets (character_id, created_at DESC);
@@ -184,9 +187,12 @@ CREATE TABLE item_transactions (
 CREATE INDEX item_transactions_actor_time_idx ON item_transactions (actor_user_id, created_at DESC);
 
 CREATE TABLE active_character_leases (
-  character_id UUID PRIMARY KEY REFERENCES characters(id) ON DELETE CASCADE,
-  session_id UUID NOT NULL REFERENCES auth_sessions(id) ON DELETE CASCADE,
+  character_id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id UUID NOT NULL,
   lease_expires_at TIMESTAMPTZ NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY (character_id, user_id) REFERENCES characters(id, user_id) ON DELETE CASCADE,
+  FOREIGN KEY (session_id, user_id) REFERENCES auth_sessions(id, user_id) ON DELETE CASCADE
 );
 CREATE INDEX active_character_leases_expiry_idx ON active_character_leases (lease_expires_at);

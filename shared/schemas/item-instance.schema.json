@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shattered-firmament.invalid/schemas/item-instance.schema.json",
+  "title": "Inventory Item Instance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "instanceId",
+    "ownerCharacterId",
+    "definitionId",
+    "definitionVersion",
+    "quantity",
+    "upgradeLevel"
+  ],
+  "properties": {
+    "instanceId": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "ownerCharacterId": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "definitionId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+    },
+    "definitionVersion": { "type": "integer", "minimum": 1 },
+    "quantity": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+    "durability": { "type": ["integer", "null"], "minimum": 0 },
+    "boundToAccountId": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "equippedSlot": { "type": ["string", "null"], "maxLength": 40 },
+    "upgradeLevel": { "type": "integer", "minimum": 0, "maximum": 30 },
+    "affixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "value"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+          },
+          "value": { "type": "number", "minimum": -100000, "maximum": 100000 }
+        }
+      }
+    }
+  }
+}
