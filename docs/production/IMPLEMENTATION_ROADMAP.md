@@ -83,7 +83,7 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Verified on the workstation after a frozen install: `pnpm build`, `pnpm typecheck`, `pnpm test` (4 tests), `pnpm lint`, and Godot 4.7.2 headless editor initialisation all exited successfully.
 - Fixed stale canonical-document paths in `AGENTS.md` and formatted existing TypeScript/JSON files with Prettier.
 - PostgreSQL migration execution and database integration remain unverified because PostgreSQL/Docker CLI tools are not currently available on the workstation.
-- Phase 1 remains open until the CI workflow passes remotely; Phase 2 content contracts and graph invariants are next.
+- Phase 1 exit criteria passed on 2026-10-19. GitHub Actions run for the workspace CI workflow completed successfully: https://github.com/masterdishaun/Shattered-Firmament-A-Zodiac-Relic-MMORPG/actions/runs/39277218695. Phase 2 content contracts and graph invariants are in progress.
 
 ## Progress log — Phase 2 content contracts
 
