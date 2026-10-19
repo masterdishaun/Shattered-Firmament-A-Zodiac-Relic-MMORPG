@@ -76,3 +76,11 @@
 ## Status reporting
 
 Every report distinguishes implemented, locally tested, integration-tested, load-tested, Godot-export-tested, deployed and production-verified. Never collapse these into a generic “done”.
+
+## Progress log — 2026-10-19
+
+- Added `.github/workflows/ci.yml` to run frozen pnpm installation, build, typecheck, tests and lint on pushes and pull requests targeting `main`, with a manual dispatch option. The first GitHub-hosted workflow result is pending until this change is pushed and Actions completes.
+- Verified on the workstation after a frozen install: `pnpm build`, `pnpm typecheck`, `pnpm test` (4 tests), `pnpm lint`, and Godot 4.7.2 headless editor initialisation all exited successfully.
+- Fixed stale canonical-document paths in `AGENTS.md` and formatted existing TypeScript/JSON files with Prettier.
+- PostgreSQL migration execution and database integration remain unverified because PostgreSQL/Docker CLI tools are not currently available on the workstation.
+- Phase 1 remains open until the CI workflow passes remotely; Phase 2 content contracts and graph invariants are next.
