@@ -142,3 +142,10 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Added an in-game online panel using Godot HTTPRequest for account registration/login, refresh rotation, logout, character creation/listing and join-ticket requests. Access/refresh tokens remain in memory; the UI does not persist credentials.
 - Added a Godot API smoke test and ran it end-to-end against a temporary PostgreSQL 17 cluster plus the local API/game server: registration, refresh rotation, account lookup, faction-bound character creation, join-ticket issuance, logout and login-by-username all passed. The test database and server process were stopped and removed after the run.
 - The online panel is intentionally honest about the remaining gap: it requests a server ticket and previews the character start locally but does not connect a WebSocket room until the Godot Colyseus SDK compatibility gate is resolved.
+
+## Progress log - Phase 9 Godot-to-Colyseus room connection
+
+- Rejected the official native Godot SDK beta after a repeatable editor-shutdown access violation. Vendored the MIT-licensed pure-GDScript client at upstream commit f17b084414a65e88b822cebdaa285cf9e1b80556 and documented the local fork patches.
+- Adapted the client connection probe for the current Colyseus 0.16 transport, and removed logs that exposed reconnection tokens, session IDs, WebSocket URLs or complete room payloads.
+- End-to-end verified with a disposable PostgreSQL 17 cluster and the local API/game server: register, refresh-token rotation, authenticated account lookup, faction-bound character creation, join-ticket request, WebSocket matchmaking, room admission, S2C_RoomJoinSuccess, logout and room disconnect all passed.
+- Scope remains a room handshake only. Authoritative movement, input validation, state snapshots/replication, reconnect recovery and load testing remain open.

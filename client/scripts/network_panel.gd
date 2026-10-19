@@ -2,6 +2,7 @@ extends Control
 
 signal status_changed(message: String)
 signal character_ticketed(character: Dictionary)
+signal world_joined(character: Dictionary)
 signal close_requested
 
 var access_token := ""
@@ -10,6 +11,10 @@ var current_user: Dictionary = {}
 var characters: Array[Dictionary] = []
 var pending_action := ""
 var request_in_flight := false
+var pending_join_ticket := ""
+var game_client: Node
+var game_room: RefCounted
+var world_connected := false
 
 var api_url_input: LineEdit
 var game_url_input: LineEdit
@@ -75,9 +80,11 @@ func _build_panel() -> void:
 	stack.add_child(heading)
 
 	_add_label(stack, "API URL")
-	api_url_input = _add_input(stack, "http://127.0.0.1:2567")
-	_add_label(stack, "Game WebSocket URL (reserved for the validated client SDK)")
-	game_url_input = _add_input(stack, "ws://127.0.0.1:2568")
+	api_url_input = _add_input(stack, "API base URL")
+	api_url_input.text = "http://127.0.0.1:2567"
+	_add_label(stack, "Game WebSocket URL")
+	game_url_input = _add_input(stack, "WebSocket endpoint")
+	game_url_input.text = "ws://127.0.0.1:2568"
 
 	_add_separator(stack)
 	_add_label(stack, "LOGIN")
@@ -293,6 +300,7 @@ func _logout() -> void:
 
 
 func _clear_session() -> void:
+	_disconnect_game_client()
 	access_token = ""
 	refresh_token = ""
 	current_user.clear()
@@ -364,19 +372,115 @@ func _on_request_completed(
 			if not data is Dictionary or not data.has("joinTicket"):
 				_set_status("The API did not return a join ticket.")
 				return
+			pending_join_ticket = String(data["joinTicket"])
 			var character: Dictionary = data.get("character", {})
 			character_ticketed.emit(character)
 			_set_status(
-				"Join ticket issued for %s in %s; expires at %s. The Godot-to-Colyseus client remains disabled until SDK compatibility is resolved."
+				"Join ticket issued for %s in %s; expires at %s. Connecting to the world room..."
 				% [
 					String(character.get("name", "character")),
 					String(character.get("mapId", "unknown zone")),
 					String(data.get("expiresAt", "unknown"))
 				]
 			)
+			_connect_to_world()
 		"logout":
 			_clear_session()
 			_set_status("Logged out. The server session has been revoked.")
 		_:
 			_set_status("Request completed.")
+
+func _connect_to_world() -> void:
+	var ticket_to_use := pending_join_ticket
+	_disconnect_game_client(false)
+	pending_join_ticket = ticket_to_use
+	if pending_join_ticket.is_empty():
+		_set_status("Request a fresh join ticket before connecting to the world.")
+		return
+	var endpoint := game_url_input.text.strip_edges()
+	if not endpoint.begins_with("ws://") and not endpoint.begins_with("wss://"):
+		_set_status("Game URL must begin with ws:// or wss://.")
+		return
+	var client_script: Script = load("res://addons/colyseus/src/client/ColyseusClient.gd")
+	if client_script == null:
+		_set_status("The vendored Colyseus GDScript client is missing.")
+		return
+	game_client = client_script.new()
+	add_child(game_client)
+	game_client.set_process(true)
+	game_client.connect("connected", Callable(self, "_on_game_client_connected"))
+	game_client.connect("error", Callable(self, "_on_game_client_error"))
+	game_client.connect("disconnected", Callable(self, "_on_game_client_disconnected"))
+	game_client.call("connect_to_server", endpoint)
+
+
+func _on_game_client_connected() -> void:
+	if pending_join_ticket.is_empty() or game_client == null:
+		return
+	_set_status("Client initialized. Requesting Colyseus world-room admission...")
+	game_room = game_client.call("join", "world", {"joinTicket": pending_join_ticket})
+	if game_room == null:
+		_set_status("Colyseus matchmaking did not return a room.")
+		return
+	game_room.connect("joined", Callable(self, "_on_room_joined"))
+	game_room.connect("message_received", Callable(self, "_on_room_message"))
+	game_room.connect("error_received", Callable(self, "_on_room_error"))
+	game_room.connect("left", Callable(self, "_on_room_left"))
+
+
+func _on_room_joined() -> void:
+	_set_status("Colyseus accepted the character. Waiting for the world welcome message...")
+
+
+func _on_room_message(message_type: Variant, data: Variant) -> void:
+	if String(message_type) != "S2C_RoomJoinSuccess":
+		return
+	var envelope: Dictionary = data if data is Dictionary else {}
+	var payload: Dictionary = envelope.get("payload", {})
+	var character: Dictionary = payload.get("character", {})
+	world_connected = true
+	world_joined.emit(character)
+	_set_status(
+		"Connected to Colyseus room %s as %s. Network admission works; movement and snapshots are still local-only."
+		% [
+			String(payload.get("roomId", "unknown")),
+			String(character.get("name", "character"))
+		]
+	)
+
+
+func _on_game_client_error(code: int, message: String) -> void:
+	world_connected = false
+	_set_status("Colyseus client error %d: %s. Request a fresh ticket to retry." % [code, message])
+
+
+func _on_room_error(code: int, message: String) -> void:
+	world_connected = false
+	_set_status("World room rejected the connection (%d): %s" % [code, message])
+
+
+func _on_room_left(code: int, reason: String) -> void:
+	world_connected = false
+	if not access_token.is_empty():
+		_set_status("Left the world room (%d): %s" % [code, reason])
+
+
+func _on_game_client_disconnected() -> void:
+	world_connected = false
+
+
+func _disconnect_game_client(clear_ticket: bool = true) -> void:
+	if clear_ticket:
+		pending_join_ticket = ""
+	world_connected = false
+	game_room = null
+	if game_client != null:
+		if game_client.has_method("close_connection"):
+			game_client.call("close_connection")
+		game_client.queue_free()
+		game_client = null
+
+
+func _exit_tree() -> void:
+	_disconnect_game_client()
 

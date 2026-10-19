@@ -399,6 +399,7 @@ func _toggle_network_panel() -> void:
 		hud_root.add_child(network_panel)
 		network_panel.status_changed.connect(_on_network_status_changed)
 		network_panel.character_ticketed.connect(_on_character_ticketed)
+		network_panel.world_joined.connect(_on_world_joined)
 		network_panel.close_requested.connect(_close_network_panel)
 	network_panel.visible = not network_panel.visible
 
@@ -406,6 +407,10 @@ func _toggle_network_panel() -> void:
 func _close_network_panel() -> void:
 	if network_panel != null:
 		network_panel.visible = false
+
+
+func _on_world_joined(character: Dictionary) -> void:
+	feedback_label.text = "Server room handshake confirmed for %s. Character movement is still local-only in this prototype." % String(character.get("name", "character"))
 
 
 func _on_network_status_changed(message: String) -> void:

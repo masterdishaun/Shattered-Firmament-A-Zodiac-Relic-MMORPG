@@ -68,11 +68,20 @@ func _run_api_smoke() -> void:
 	if not await _wait_for_panel_idle():
 		_fail("The character-selection request did not complete.")
 		return
-	if not network_panel.status_label.text.contains("Join ticket issued"):
-		_fail("The online panel did not report join-ticket issuance.")
-		return
 	if ticketed_characters.size() != 1 or ticketed_characters[0].get("mapId") != "luminous_veil":
 		_fail("The online panel did not publish the selected character's server start map.")
+		return
+	var room_connected := false
+	for _frame in range(900):
+		if network_panel.world_connected:
+			room_connected = true
+			break
+		await process_frame
+	if not room_connected:
+		_fail("Godot did not join the Colyseus world room: %s" % network_panel.status_label.text)
+		return
+	if not network_panel.status_label.text.contains("Connected to Colyseus room"):
+		_fail("Godot did not receive the S2C_RoomJoinSuccess welcome message.")
 		return
 
 	network_panel._logout()
@@ -81,6 +90,9 @@ func _run_api_smoke() -> void:
 		return
 	if not network_panel.access_token.is_empty():
 		_fail("The online panel did not clear local tokens after logout.")
+		return
+	if network_panel.world_connected:
+		_fail("Logout did not disconnect the Colyseus room client.")
 		return
 
 	network_panel.identifier_input.text = username
