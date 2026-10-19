@@ -128,3 +128,9 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Added three distinct faction start platforms and landmarks, local camera-relative WASD movement, collision, orthographic follow camera, HUD, faction-start preview keys and E-key relic interactions with faction-specific narrative snippets.
 - Headless Godot 4.7.2 scene startup completed without script/parse errors after fixing two invalid material property accesses. This validates scene startup only; no interactive GUI playtest, visual review or export test has been completed.
 - Remaining: GUI playtest, polish of zone visuals/collisions, character animation, client-server connection, authoritative movement and state replication.
+## Progress log - Phase 7 client networking compatibility gate
+
+- Evaluated official Colyseus native Godot SDK 0.18.7, pinned to the upstream release. The archive was checksum-verified before extraction.
+- With the extension installed, the existing local prototype smoke passed, but Godot 4.7.2 headless editor shutdown exited with Windows access violation `0xC0000005`. This did not verify an actual network connection.
+- Removed the uncommitted SDK binaries and installer rather than leave the workstation in an unstable editor state. No third-party SDK binaries were committed.
+- Blocker: validate a compatible SDK build or another supported integration path before connecting the Godot client. API authentication, character selection and server-side Colyseus ticket admission are implemented and integration-tested independently.

@@ -101,3 +101,8 @@ This is an initial implementation slice. Production hardening still requires dis
 ## Godot client vertical slice
 
 The current main scene generates a primitive 3D/isometric-style blockout at runtime: three faction-themed start platforms, a fixed orthographic camera, local WASD character movement with collision, a HUD and E-key relic inspection. Keys 1/2/3 preview the three faction starts. No third-party art is included. This local prototype is not yet connected to the API or Colyseus; client prediction, authoritative movement, replication, animation and export verification remain open.
+## Client SDK integration gate
+
+The official [Colyseus native Godot SDK 0.18.7](https://github.com/colyseus/native-sdk/releases/tag/godot-v0.18.7) was evaluated as an optional integration spike. The existing local scene smoke test still passed with the extension present, but the Godot 4.7.2 headless editor exited with Windows access violation `0xC0000005` during shutdown after loading the extension. No network connection was verified. The beta extension was removed and is not part of the repository.
+
+Do not make this SDK a required project dependency until editor startup/shutdown is stable on the target Godot version, or a different supported client integration path has been validated. API-to-Godot login and room connection remain outstanding; the current local blockout does not connect to the API or Colyseus.
