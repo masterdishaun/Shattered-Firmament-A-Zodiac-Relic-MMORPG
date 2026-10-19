@@ -37,9 +37,10 @@ _Battle of the Immortals_, _Jade Dynasty_, _Diablo_ and _Torchlight_ are inspira
 4. `docs/narrative/STORY_BIBLE.md`
 5. `docs/narrative/FACTION_QUESTS.md`
 6. `docs/architecture/SYSTEM_ARCHITECTURE.md`
-7. `docs/production/DEVELOPMENT_SETUP.md`
-8. `docs/production/IMPLEMENTATION_ROADMAP.md`
-9. `docs/adr/` — accepted architecture decisions.
+7. `docs/architecture/CONTENT_CONTRACTS.md`
+8. `docs/production/DEVELOPMENT_SETUP.md`
+9. `docs/production/IMPLEMENTATION_ROADMAP.md`
+10. `docs/adr/` — accepted architecture decisions.
 
 ## Structure
 

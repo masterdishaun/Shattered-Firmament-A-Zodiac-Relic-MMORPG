@@ -1,0 +1,56 @@
+[
+  {
+    "id": "vanguard",
+    "displayName": "Vanguard",
+    "role": "vanguard",
+    "availableFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "baseStats": {
+      "health": 120,
+      "attack": 10,
+      "defence": 8,
+      "spirit": 2
+    },
+    "startingSkillIds": ["skill.basic-strike"],
+    "startingEquipmentIds": ["weapon.training-jade-blade"]
+  },
+  {
+    "id": "mystic",
+    "displayName": "Mystic",
+    "role": "mystic",
+    "availableFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "baseStats": {
+      "health": 85,
+      "attack": 13,
+      "defence": 3,
+      "spirit": 12
+    },
+    "startingSkillIds": ["skill.spirit-bolt"],
+    "startingEquipmentIds": ["weapon.training-jade-blade"]
+  },
+  {
+    "id": "support",
+    "displayName": "Spirit Warden",
+    "role": "support",
+    "availableFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "baseStats": {
+      "health": 100,
+      "attack": 8,
+      "defence": 5,
+      "spirit": 14
+    },
+    "startingSkillIds": ["skill.restorative-pulse"],
+    "startingEquipmentIds": ["weapon.training-jade-blade"]
+  }
+]

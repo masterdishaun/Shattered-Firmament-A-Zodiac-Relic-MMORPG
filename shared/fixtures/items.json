@@ -1,0 +1,54 @@
+[
+  {
+    "id": "weapon.training-jade-blade",
+    "version": 1,
+    "displayName": "Training Jade Blade",
+    "itemType": "weapon",
+    "rarity": "common",
+    "levelRequirement": 1,
+    "bindPolicy": "character_bound",
+    "tradeable": false,
+    "stackLimit": 1,
+    "stats": {
+      "attack": 2
+    }
+  },
+  {
+    "id": "consumable.spirit-tonic",
+    "version": 1,
+    "displayName": "Minor Spirit Tonic",
+    "itemType": "consumable",
+    "rarity": "common",
+    "levelRequirement": 1,
+    "bindPolicy": "unbound",
+    "tradeable": true,
+    "stackLimit": 20,
+    "stats": {},
+    "effectIds": ["effect.restore-spirit"]
+  },
+  {
+    "id": "material.ashen-jade-fragment",
+    "version": 1,
+    "displayName": "Ashen-Jade Fragment",
+    "itemType": "material",
+    "rarity": "uncommon",
+    "levelRequirement": 1,
+    "bindPolicy": "unbound",
+    "tradeable": true,
+    "stackLimit": 999,
+    "stats": {}
+  },
+  {
+    "id": "cosmetic.zodiac-trail",
+    "version": 1,
+    "displayName": "Zodiac Trail",
+    "itemType": "cosmetic",
+    "rarity": "rare",
+    "levelRequirement": 1,
+    "bindPolicy": "account_bound",
+    "tradeable": false,
+    "stackLimit": 1,
+    "stats": {},
+    "cosmeticOnly": true
+  }
+]

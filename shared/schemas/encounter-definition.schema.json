@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shattered-firmament.invalid/schemas/encounter-definition.schema.json",
+  "title": "Encounter Definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "displayName",
+    "encounterType",
+    "levelMin",
+    "levelMax",
+    "zoneId",
+    "health",
+    "attack",
+    "rewardTableId",
+    "factionAccess",
+    "rewardPolicy"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$" },
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "encounterType": { "enum": ["normal", "elite", "boss", "zodiac_guardian"] },
+    "levelMin": { "type": "integer", "minimum": 1, "maximum": 100 },
+    "levelMax": { "type": "integer", "minimum": 1, "maximum": 100 },
+    "zoneId": { "type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$" },
+    "health": { "type": "integer", "minimum": 1, "maximum": 100000000 },
+    "attack": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+    "rewardTableId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+    },
+    "factionAccess": { "enum": ["all", "own_faction", "faction_instance"] },
+    "factionIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["sovereign_sect", "ashen_syndicate", "astral_concord"]
+      }
+    },
+    "rewardPolicy": {
+      "enum": ["personal", "contribution_weighted", "faction_objective"]
+    },
+    "respawnPolicy": {
+      "enum": ["none", "fixed_interval", "scheduled_window", "rotating_event"]
+    },
+    "essentialProgression": { "type": "boolean", "default": false }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "factionAccess": { "enum": ["own_faction", "faction_instance"] }
+        },
+        "required": ["factionAccess"]
+      },
+      "then": {
+        "required": ["factionIds"],
+        "properties": { "factionIds": { "type": "array", "minItems": 1 } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "essentialProgression": { "const": true } },
+        "required": ["essentialProgression"]
+      },
+      "then": { "properties": { "factionAccess": { "const": "all" } } }
+    }
+  ]
+}

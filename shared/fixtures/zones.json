@@ -1,0 +1,82 @@
+[
+  {
+    "id": "white_jade_bastion",
+    "displayName": "White Jade Bastion",
+    "zoneType": "faction_start",
+    "recommendedLevelMin": 1,
+    "recommendedLevelMax": 10,
+    "pvpEnabled": false,
+    "safeZone": true,
+    "allowedFactionIds": ["sovereign_sect"],
+    "mapRevision": "blockout-001",
+    "encounterIds": []
+  },
+  {
+    "id": "cinderwake",
+    "displayName": "Cinderwake",
+    "zoneType": "faction_start",
+    "recommendedLevelMin": 1,
+    "recommendedLevelMax": 10,
+    "pvpEnabled": false,
+    "safeZone": true,
+    "allowedFactionIds": ["ashen_syndicate"],
+    "mapRevision": "blockout-001",
+    "encounterIds": []
+  },
+  {
+    "id": "luminous_veil",
+    "displayName": "Luminous Veil",
+    "zoneType": "faction_start",
+    "recommendedLevelMin": 1,
+    "recommendedLevelMax": 10,
+    "pvpEnabled": false,
+    "safeZone": true,
+    "allowedFactionIds": ["astral_concord"],
+    "mapRevision": "blockout-001",
+    "encounterIds": []
+  },
+  {
+    "id": "zone.neutral-crossroads",
+    "displayName": "Wayfarer Crossroads",
+    "zoneType": "peace",
+    "recommendedLevelMin": 1,
+    "recommendedLevelMax": 30,
+    "pvpEnabled": false,
+    "safeZone": true,
+    "allowedFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "mapRevision": "blockout-001",
+    "encounterIds": []
+  },
+  {
+    "id": "zone.ashen-frontier",
+    "displayName": "Ashen Frontier",
+    "zoneType": "contested",
+    "recommendedLevelMin": 20,
+    "recommendedLevelMax": 50,
+    "pvpEnabled": true,
+    "safeZone": false,
+    "allowedFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "mapRevision": "blockout-001",
+    "encounterIds": []
+  },
+  {
+    "id": "zone.sect-duelling-ground",
+    "displayName": "Sect Challenge Ground",
+    "zoneType": "faction_pvp",
+    "recommendedLevelMin": 20,
+    "recommendedLevelMax": 40,
+    "pvpEnabled": true,
+    "safeZone": false,
+    "allowedFactionIds": ["sovereign_sect"],
+    "mapRevision": "blockout-001",
+    "encounterIds": []
+  }
+]

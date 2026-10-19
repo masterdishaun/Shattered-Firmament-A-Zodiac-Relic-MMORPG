@@ -1,0 +1,79 @@
+{
+  "id": "progression.launch-baseline",
+  "version": 1,
+  "levelCap": 100,
+  "expectedHoursToCap": {
+    "minimum": 70,
+    "maximum": 100
+  },
+  "breakthroughLevels": [20, 40, 60, 80, 100],
+  "cultivationRealms": [
+    {
+      "id": "awakened_soul",
+      "breakthroughLevel": 20
+    },
+    {
+      "id": "jade_meridian",
+      "breakthroughLevel": 40
+    },
+    {
+      "id": "astral_core",
+      "breakthroughLevel": 60
+    },
+    {
+      "id": "celestial_vessel",
+      "breakthroughLevel": 80
+    },
+    {
+      "id": "firmament_ascendant",
+      "breakthroughLevel": 100
+    }
+  ],
+  "gearTiers": [
+    {
+      "id": "worn_relics",
+      "levelMin": 1,
+      "levelMax": 20,
+      "expectedPowerGrowthPercent": {
+        "minimum": 8,
+        "maximum": 12
+      }
+    },
+    {
+      "id": "jadeforged",
+      "levelMin": 21,
+      "levelMax": 40,
+      "expectedPowerGrowthPercent": {
+        "minimum": 8,
+        "maximum": 12
+      }
+    },
+    {
+      "id": "zodiac_bound",
+      "levelMin": 41,
+      "levelMax": 60,
+      "expectedPowerGrowthPercent": {
+        "minimum": 8,
+        "maximum": 12
+      }
+    },
+    {
+      "id": "astral_ascendant",
+      "levelMin": 61,
+      "levelMax": 80,
+      "expectedPowerGrowthPercent": {
+        "minimum": 8,
+        "maximum": 12
+      }
+    },
+    {
+      "id": "firmament_relics",
+      "levelMin": 81,
+      "levelMax": 100,
+      "expectedPowerGrowthPercent": {
+        "minimum": 8,
+        "maximum": 12
+      }
+    }
+  ]
+}

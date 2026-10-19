@@ -1,0 +1,47 @@
+[
+  {
+    "id": "encounter.census-warden",
+    "displayName": "Census Warden",
+    "encounterType": "boss",
+    "levelMin": 5,
+    "levelMax": 8,
+    "zoneId": "white_jade_bastion",
+    "health": 850,
+    "attack": 18,
+    "rewardTableId": "rewards.sovereign-opening",
+    "factionAccess": "faction_instance",
+    "factionIds": ["sovereign_sect"],
+    "rewardPolicy": "personal",
+    "respawnPolicy": "none"
+  },
+  {
+    "id": "encounter.furnace-saint",
+    "displayName": "Furnace Saint",
+    "encounterType": "boss",
+    "levelMin": 5,
+    "levelMax": 8,
+    "zoneId": "cinderwake",
+    "health": 900,
+    "attack": 20,
+    "rewardTableId": "rewards.ashen-opening",
+    "factionAccess": "faction_instance",
+    "factionIds": ["ashen_syndicate"],
+    "rewardPolicy": "personal",
+    "respawnPolicy": "none"
+  },
+  {
+    "id": "encounter.echo-bound-guardian",
+    "displayName": "Echo-Bound Guardian",
+    "encounterType": "boss",
+    "levelMin": 5,
+    "levelMax": 8,
+    "zoneId": "luminous_veil",
+    "health": 800,
+    "attack": 17,
+    "rewardTableId": "rewards.concord-opening",
+    "factionAccess": "faction_instance",
+    "factionIds": ["astral_concord"],
+    "rewardPolicy": "personal",
+    "respawnPolicy": "none"
+  }
+]

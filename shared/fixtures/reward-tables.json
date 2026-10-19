@@ -1,0 +1,74 @@
+[
+  {
+    "id": "rewards.sovereign-opening",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.sovereign.fragment",
+        "rewardType": "material",
+        "itemId": "material.ashen-jade-fragment",
+        "quantityMin": 1,
+        "quantityMax": 1,
+        "chance": 1,
+        "tradeable": true
+      },
+      {
+        "id": "entry.sovereign.xp",
+        "rewardType": "experience",
+        "quantityMin": 100,
+        "quantityMax": 100,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.ashen-opening",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.ashen.fragment",
+        "rewardType": "material",
+        "itemId": "material.ashen-jade-fragment",
+        "quantityMin": 1,
+        "quantityMax": 2,
+        "chance": 1,
+        "tradeable": true
+      },
+      {
+        "id": "entry.ashen.xp",
+        "rewardType": "experience",
+        "quantityMin": 100,
+        "quantityMax": 100,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.concord-opening",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.concord.fragment",
+        "rewardType": "material",
+        "itemId": "material.ashen-jade-fragment",
+        "quantityMin": 1,
+        "quantityMax": 1,
+        "chance": 1,
+        "tradeable": true
+      },
+      {
+        "id": "entry.concord.xp",
+        "rewardType": "experience",
+        "quantityMin": 100,
+        "quantityMax": 100,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  }
+]

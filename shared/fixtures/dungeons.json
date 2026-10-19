@@ -1,0 +1,47 @@
+[
+  {
+    "id": "dungeon.underterrace-archive",
+    "displayName": "Underterrace Archive",
+    "mode": "solo_story",
+    "levelMin": 1,
+    "levelMax": 10,
+    "partySizeMin": 1,
+    "partySizeMax": 1,
+    "zoneId": "white_jade_bastion",
+    "encounterIds": ["encounter.census-warden"],
+    "rewardTableId": "rewards.sovereign-opening",
+    "factionAccess": "faction_instance",
+    "factionIds": ["sovereign_sect"],
+    "essentialProgression": false
+  },
+  {
+    "id": "dungeon.cinder-vault",
+    "displayName": "Cinder Vault",
+    "mode": "solo_story",
+    "levelMin": 1,
+    "levelMax": 10,
+    "partySizeMin": 1,
+    "partySizeMax": 1,
+    "zoneId": "cinderwake",
+    "encounterIds": ["encounter.furnace-saint"],
+    "rewardTableId": "rewards.ashen-opening",
+    "factionAccess": "faction_instance",
+    "factionIds": ["ashen_syndicate"],
+    "essentialProgression": false
+  },
+  {
+    "id": "dungeon.drowned-shrine",
+    "displayName": "Drowned Shrine",
+    "mode": "solo_story",
+    "levelMin": 1,
+    "levelMax": 10,
+    "partySizeMin": 1,
+    "partySizeMax": 1,
+    "zoneId": "luminous_veil",
+    "encounterIds": ["encounter.echo-bound-guardian"],
+    "rewardTableId": "rewards.concord-opening",
+    "factionAccess": "faction_instance",
+    "factionIds": ["astral_concord"],
+    "essentialProgression": false
+  }
+]

@@ -84,3 +84,11 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Fixed stale canonical-document paths in `AGENTS.md` and formatted existing TypeScript/JSON files with Prettier.
 - PostgreSQL migration execution and database integration remain unverified because PostgreSQL/Docker CLI tools are not currently available on the workstation.
 - Phase 1 remains open until the CI workflow passes remotely; Phase 2 content contracts and graph invariants are next.
+
+## Progress log — Phase 2 content contracts
+
+- Added schemas for character archetypes, items, zones, dungeons, encounters, reward tables and the progression baseline; existing faction and quest schemas remain in use.
+- Added example content for three faction starts and opening dungeons, encounters/rewards, initial archetypes/items, and the provisional level-100 progression model.
+- Expanded automated content checks to detect duplicate IDs, missing quest prerequisites, prerequisite cycles, invalid faction-start/PvP rules, missing zone/reward/item references, invalid ranges and progression milestone drift.
+- Local shared-content suite now has 9 passing tests; API suite has 2 passing tests. Full build, typecheck, tests, lint and Godot 4.7.2 headless editor initialisation were rerun successfully before commit.
+- Phase 2 is in progress, not complete. Inventory/trade runtime schemas, skills/effects, localization/version loading and content-loader integration remain open.

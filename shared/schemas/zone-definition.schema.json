@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shattered-firmament.invalid/schemas/zone-definition.schema.json",
+  "title": "Zone Definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "displayName",
+    "zoneType",
+    "recommendedLevelMin",
+    "recommendedLevelMax",
+    "pvpEnabled",
+    "safeZone",
+    "allowedFactionIds",
+    "mapRevision"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "zoneType": {
+      "enum": ["faction_start", "peace", "faction_pvp", "contested", "dungeon"]
+    },
+    "recommendedLevelMin": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "recommendedLevelMax": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "pvpEnabled": {
+      "type": "boolean"
+    },
+    "safeZone": {
+      "type": "boolean"
+    },
+    "allowedFactionIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["sovereign_sect", "ashen_syndicate", "astral_concord"]
+      }
+    },
+    "mapRevision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "encounterIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "zoneType": {
+            "const": "faction_start"
+          }
+        },
+        "required": ["zoneType"]
+      },
+      "then": {
+        "properties": {
+          "safeZone": {
+            "const": true
+          },
+          "pvpEnabled": {
+            "const": false
+          },
+          "allowedFactionIds": {
+            "minItems": 1,
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "zoneType": {
+            "const": "peace"
+          }
+        },
+        "required": ["zoneType"]
+      },
+      "then": {
+        "properties": {
+          "safeZone": {
+            "const": true
+          },
+          "pvpEnabled": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "zoneType": {
+            "const": "faction_pvp"
+          }
+        },
+        "required": ["zoneType"]
+      },
+      "then": {
+        "properties": {
+          "safeZone": {
+            "const": false
+          },
+          "pvpEnabled": {
+            "const": true
+          },
+          "allowedFactionIds": {
+            "minItems": 1,
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "zoneType": {
+            "const": "contested"
+          }
+        },
+        "required": ["zoneType"]
+      },
+      "then": {
+        "properties": {
+          "safeZone": {
+            "const": false
+          }
+        }
+      }
+    }
+  ]
+}

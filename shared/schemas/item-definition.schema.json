@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shattered-firmament.invalid/schemas/item-definition.schema.json",
+  "title": "Item Definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "displayName",
+    "itemType",
+    "rarity",
+    "levelRequirement",
+    "bindPolicy",
+    "tradeable",
+    "stackLimit",
+    "stats"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "itemType": {
+      "enum": [
+        "weapon",
+        "armour",
+        "accessory",
+        "consumable",
+        "material",
+        "quest",
+        "cosmetic",
+        "pet_token"
+      ]
+    },
+    "rarity": {
+      "enum": ["common", "uncommon", "rare", "epic", "legendary", "mythic"]
+    },
+    "levelRequirement": { "type": "integer", "minimum": 1, "maximum": 100 },
+    "bindPolicy": {
+      "enum": [
+        "unbound",
+        "bind_on_pickup",
+        "bind_on_equip",
+        "account_bound",
+        "character_bound"
+      ]
+    },
+    "tradeable": { "type": "boolean" },
+    "stackLimit": { "type": "integer", "minimum": 1, "maximum": 9999 },
+    "stats": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": -1000,
+        "maximum": 10000
+      }
+    },
+    "effectIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$" }
+    },
+    "cosmeticOnly": { "type": "boolean" }
+  }
+}
