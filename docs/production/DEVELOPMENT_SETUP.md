@@ -64,3 +64,9 @@ Build/type-check/test/lint success applies only to the current scaffold. It does
 - HTTP API: `HOST` / `HTTP_PORT` (defaults `127.0.0.1:2567`).
 - Colyseus WebSocket server: `GAME_HOST` / `GAME_PORT` (defaults `127.0.0.1:2568`); it starts only when `DATABASE_URL` is configured. Keep it behind the intended TLS/WebSocket edge in deployment.
 - A join ticket is only usable once, expires after 60 seconds, and is consumed at room admission. A character with an active lease cannot be admitted into a second room connection until the lease is released or expires.
+
+## Godot HTTP account panel
+
+- Start the API with a migrated development database and a random `ACCESS_TOKEN_SECRET`. The API listens on `HTTP_PORT` (default 2567); the Colyseus server starts on `GAME_PORT` (default 2568) when `DATABASE_URL` is configured.
+- Run the Godot project and choose **ONLINE ACCOUNT / CHARACTER**. Enter the API base URL, register or log in, create/list characters and request a short-lived join ticket. The client keeps tokens in memory only. The Game WebSocket URL field is reserved; the panel does not connect to a room until a stable Godot Colyseus client path is validated.
+- The end-to-end smoke test `Godot --headless --path client --script res://tests/network_api_smoke.gd` creates a temporary account, rotates a refresh token, creates a faction-bound character, requests a join ticket and logs out. Run it only against a disposable development/test database and a local API, never production.

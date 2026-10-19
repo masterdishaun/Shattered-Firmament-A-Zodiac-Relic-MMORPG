@@ -122,15 +122,23 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Added a Colyseus `world` room that requires a join ticket, sends `S2C_RoomJoinSuccess`, tracks a 20 Hz server tick counter and renews character leases only while the auth session remains active. API and game servers use separate configurable ports.
 - Integration tests now cover one-time ticket consumption, audience mismatch without consumption, concurrent character lease conflicts, and lease renewal stopping after logout. A standalone Colyseus start/shutdown smoke test passed against a disposable PostgreSQL 17 cluster.
 - Remaining: movement/combat simulation, authoritative room state and snapshots, reconnection flow, rate limiting, production TLS/proxy deployment checks and real client connection testing.
+
 ## Progress log - Phase 6 Godot vertical-slice blockout
 
 - Replaced the title-only main scene with a generated 3D/isometric-style blockout using Godot 4.7.2-compatible primitives and materials.
 - Added three distinct faction start platforms and landmarks, local camera-relative WASD movement, collision, orthographic follow camera, HUD, faction-start preview keys and E-key relic interactions with faction-specific narrative snippets.
 - Headless Godot 4.7.2 scene startup completed without script/parse errors after fixing two invalid material property accesses. This validates scene startup only; no interactive GUI playtest, visual review or export test has been completed.
 - Remaining: GUI playtest, polish of zone visuals/collisions, character animation, client-server connection, authoritative movement and state replication.
+
 ## Progress log - Phase 7 client networking compatibility gate
 
 - Evaluated official Colyseus native Godot SDK 0.18.7, pinned to the upstream release. The archive was checksum-verified before extraction.
 - With the extension installed, the existing local prototype smoke passed, but Godot 4.7.2 headless editor shutdown exited with Windows access violation `0xC0000005`. This did not verify an actual network connection.
 - Removed the uncommitted SDK binaries and installer rather than leave the workstation in an unstable editor state. No third-party SDK binaries were committed.
 - Blocker: validate a compatible SDK build or another supported integration path before connecting the Godot client. API authentication, character selection and server-side Colyseus ticket admission are implemented and integration-tested independently.
+
+## Progress log - Phase 8 Godot HTTP account panel
+
+- Added an in-game online panel using Godot HTTPRequest for account registration/login, refresh rotation, logout, character creation/listing and join-ticket requests. Access/refresh tokens remain in memory; the UI does not persist credentials.
+- Added a Godot API smoke test and ran it end-to-end against a temporary PostgreSQL 17 cluster plus the local API/game server: registration, refresh rotation, account lookup, faction-bound character creation, join-ticket issuance, logout and login-by-username all passed. The test database and server process were stopped and removed after the run.
+- The online panel is intentionally honest about the remaining gap: it requests a server ticket and previews the character start locally but does not connect a WebSocket room until the Godot Colyseus SDK compatibility gate is resolved.

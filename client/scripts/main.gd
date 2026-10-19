@@ -40,6 +40,8 @@ var camera: Camera3D
 var status_label: Label
 var prompt_label: Label
 var feedback_label: Label
+var hud_root: Control
+var network_panel: Control
 var nearby_relic_index := -1
 var inspected_relics: Dictionary = {}
 var hud_refresh_elapsed := 0.0
@@ -324,11 +326,12 @@ func _build_hud() -> void:
 	var root_control := Control.new()
 	root_control.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root_control)
+	hud_root = root_control
 
 	var panel := PanelContainer.new()
 	panel.position = Vector2(24.0, 24.0)
-	panel.custom_minimum_size = Vector2(455.0, 192.0)
-	panel.size = Vector2(455.0, 192.0)
+	panel.custom_minimum_size = Vector2(455.0, 232.0)
+	panel.size = Vector2(455.0, 232.0)
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.025, 0.045, 0.07, 0.91)
 	panel_style.border_color = Color(0.3, 0.72, 0.68, 0.9)
@@ -364,6 +367,12 @@ func _build_hud() -> void:
 	help.add_theme_color_override("font_color", Color(0.63, 0.72, 0.78))
 	stack.add_child(help)
 
+	var online_button := Button.new()
+	online_button.text = "ONLINE ACCOUNT / CHARACTER"
+	online_button.custom_minimum_size.y = 32.0
+	online_button.pressed.connect(_toggle_network_panel)
+	stack.add_child(online_button)
+
 	prompt_label = Label.new()
 	prompt_label.text = "Find the glowing Zodiac relic."
 	prompt_label.add_theme_font_size_override("font_size", 14)
@@ -377,6 +386,45 @@ func _build_hud() -> void:
 	feedback_label.add_theme_font_size_override("font_size", 12)
 	feedback_label.add_theme_color_override("font_color", Color(0.82, 0.86, 0.88))
 	stack.add_child(feedback_label)
+
+
+func _toggle_network_panel() -> void:
+	if network_panel == null:
+		var panel_script: Script = load("res://scripts/network_panel.gd")
+		if panel_script == null:
+			feedback_label.text = "The online account panel could not be loaded."
+			return
+		network_panel = panel_script.new()
+		network_panel.visible = false
+		hud_root.add_child(network_panel)
+		network_panel.status_changed.connect(_on_network_status_changed)
+		network_panel.character_ticketed.connect(_on_character_ticketed)
+		network_panel.close_requested.connect(_close_network_panel)
+	network_panel.visible = not network_panel.visible
+
+
+func _close_network_panel() -> void:
+	if network_panel != null:
+		network_panel.visible = false
+
+
+func _on_network_status_changed(message: String) -> void:
+	feedback_label.text = message
+
+
+func _on_character_ticketed(character: Dictionary) -> void:
+	var map_id: String = String(character.get("mapId", ""))
+	var map_to_faction := {
+		"white_jade_bastion": 0,
+		"cinderwake": 1,
+		"luminous_veil": 2
+	}
+	if map_to_faction.has(map_id):
+		_move_to_faction_start(map_to_faction[map_id])
+	feedback_label.text = "Server issued a short-lived ticket for %s. Local blockout moved to %s; live room connection is pending SDK compatibility." % [
+		String(character.get("name", "character")),
+		map_id
+	]
 
 
 func _move_to_faction_start(index: int) -> void:

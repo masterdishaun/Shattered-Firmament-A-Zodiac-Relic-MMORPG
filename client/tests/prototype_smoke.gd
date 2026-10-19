@@ -29,6 +29,13 @@ func _run_smoke_test() -> void:
 			_fail("Missing prototype node: %s" % required_node)
 			return
 
+	scene._toggle_network_panel()
+	await process_frame
+	if scene.network_panel == null or not scene.network_panel.visible:
+		_fail("The online account panel did not open from the prototype HUD.")
+		return
+	scene._close_network_panel()
+
 	if not scene.camera.current or scene.camera.projection != Camera3D.PROJECTION_ORTHOGONAL:
 		_fail("The isometric follow camera is not configured as expected.")
 		return
