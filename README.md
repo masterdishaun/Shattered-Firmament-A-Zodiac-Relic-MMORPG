@@ -12,15 +12,15 @@
 - **Database:** PostgreSQL.
 - **Simulation target:** 20 Hz authoritative simulation.
 - **Network:** HTTPS account/character flow, short-lived single-use join tickets, WSS gameplay.
-- **Launch progression:** levels 1–100 and five cultivation realms.
+- **Launch progression:** levels 1â€“100 and five cultivation realms.
 
 _Battle of the Immortals_, _Jade Dynasty_, _Diablo_ and _Torchlight_ are inspiration only. Art, maps, scripts, characters, animations, UI and assets must be original or properly licensed. Do not copy proprietary assets or engine technology.
 
 ## Canonical decisions
 
-- Sovereign Sect — Law — White Jade Bastion.
-- Ashen Syndicate — Chaos — Cinderwake.
-- Astral Concord — Balance — Luminous Veil.
+- Sovereign Sect â€” Law â€” White Jade Bastion.
+- Ashen Syndicate â€” Chaos â€” Cinderwake.
+- Astral Concord â€” Balance â€” Luminous Veil.
 - Faction choice gives a separate start, mentor, opening story, early dungeon and side quests; essential progression remains accessible to all factions.
 - Balanced levelling; hybrid cultivation; vertical gear with bounded power growth.
 - Hybrid player-driven economy, account-based professions, global marketplace and personal loot with selected bad-luck protection.
@@ -40,7 +40,7 @@ _Battle of the Immortals_, _Jade Dynasty_, _Diablo_ and _Torchlight_ are inspira
 7. `docs/architecture/CONTENT_CONTRACTS.md`
 8. `docs/production/DEVELOPMENT_SETUP.md`
 9. `docs/production/IMPLEMENTATION_ROADMAP.md`
-10. `docs/adr/` — accepted architecture decisions.
+10. `docs/adr/` â€” accepted architecture decisions.
 
 ## Structure
 
@@ -66,6 +66,6 @@ tools/      Content validation and balance utilities
 
 ## Current status
 
-Implemented and locally verified: transactional PostgreSQL migrations; account/session/refresh flows; faction-bound character creation and single-use join tickets; Colyseus room admission; server-authoritative 20 Hz movement and position/map persistence; two-client presence and remote avatars; server-owned blockout zone boundaries, landmark collision footprints, gate-validated transitions, and per-map snapshot isolation. The Godot T-key interaction requests a gate transition, while the server selects the destination spawn and applies protected/contested zone metadata. A disposable PostgreSQL 17 end-to-end run verified two clients starting in separate faction regions, remaining invisible across maps, transitioning to Wayfarer Crossroads, observing same-zone movement, and persisting the transitioned map after logout. Godot prototype smoke and the TypeScript build/typecheck/unit/lint checks passed locally.
+Implemented and locally verified: transactional PostgreSQL migrations; account/session/refresh flows; faction-bound character creation and single-use join tickets; Colyseus room admission; server-authoritative 20 Hz movement and position/map persistence; two-client presence and remote avatars; server-owned zone boundaries, collision footprints, gate-validated transitions, and per-map snapshot isolation. Phase 15 adds server-authoritative basic melee combat with strict target-only intents, same-map/enemy-faction/PvP-zone/range/health/cooldown validation, server-applied damage, combat result events, and Godot F-key attack input. Combat unit tests and protocol schema tests cover protected zones, cross-zone attempts, faction restrictions, range, cooldown and damage clamping.
 
-This is still an early vertical slice, not a complete MMORPG. PvP flags are zone policy metadata only; combat, attack authorization, separate room/shard deployment, load testing, final art/dialogue, GUI playtesting, export validation and production security/release review remain outstanding. Local tests use disposable PostgreSQL only; no production deployment or database was changed. See the implementation roadmap for dated evidence and remaining gates.
+This remains an early vertical slice, not a complete MMORPG. Combat values are provisional; ability systems, PvE enemy AI, persistent combat health/death/respawn, line-of-sight, combat animations, load testing, GUI playtesting, export validation and production security/release review remain open. Local tests use disposable PostgreSQL only; no production deployment or database was changed. See the implementation roadmap for verification evidence and remaining gates.

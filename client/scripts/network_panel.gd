@@ -4,6 +4,7 @@ signal status_changed(message: String)
 signal character_ticketed(character: Dictionary)
 signal world_joined(character: Dictionary)
 signal world_snapshot(snapshot: Dictionary)
+signal combat_result(result: Dictionary)
 signal zone_changed(zone: Dictionary)
 signal close_requested
 
@@ -505,6 +506,13 @@ func _on_room_message(message_type: Variant, data: Variant) -> void:
 	var message_name := String(message_type)
 	var envelope: Dictionary = data if data is Dictionary else {}
 	var payload: Dictionary = envelope.get("payload", {})
+	if message_name == "S2C_CombatResult":
+		combat_result.emit(payload)
+		if bool(payload.get("accepted", false)):
+			_set_status("Hit target for %d damage." % int(payload.get("damage", 0)))
+		else:
+			_set_status("Attack rejected: %s." % String(payload.get("reason", "unknown")))
+		return
 	if message_name == "S2C_WorldSnapshot":
 		last_world_snapshot = payload
 		world_snapshot.emit(payload)
@@ -531,7 +539,7 @@ func _on_room_message(message_type: Variant, data: Variant) -> void:
 		reconnect_timer.stop()
 	world_joined.emit(character)
 	_set_status(
-		"Connected to Colyseus room %s as %s. Movement is server-authoritative; combat is not implemented yet."
+		"Connected to Colyseus room %s as %s. Movement and combat are server-authoritative."
 		% [
 			String(payload.get("roomId", "unknown")),
 			String(character.get("name", "character"))
@@ -543,6 +551,12 @@ func request_zone_transition(target_map_id: String) -> void:
 	if not world_connected or game_room == null or target_map_id.is_empty():
 		return
 	game_room.call("send", "C2S_ZoneTransition", {"targetMapId": target_map_id})
+
+
+func send_basic_attack(target_character_id: String) -> void:
+	if not world_connected or game_room == null or target_character_id.is_empty():
+		return
+	game_room.call("send", "C2S_CombatIntent", {"targetCharacterId": target_character_id})
 
 
 func send_move_intent(axis_x: float, axis_y: float) -> int:
@@ -692,4 +706,3 @@ func _disconnect_game_client(clear_ticket: bool = true, preserve_reconnect: bool
 
 func _exit_tree() -> void:
 	_disconnect_game_client()
-

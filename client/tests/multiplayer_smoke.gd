@@ -9,6 +9,7 @@ var game_scene: Node3D
 var character_a_id := ""
 var character_b_id := ""
 var panel_a_join_count := 0
+var combat_results: Array[Dictionary] = []
 
 
 func _initialize() -> void:
@@ -25,6 +26,7 @@ func _run_multiplayer_smoke() -> void:
 	root.add_child(panel_a)
 	root.add_child(panel_b)
 	panel_a.world_joined.connect(_on_panel_a_world_joined)
+	panel_a.combat_result.connect(_on_panel_a_combat_result)
 	await process_frame
 	panel_a.api_url_input.text = API_BASE
 	panel_b.api_url_input.text = API_BASE
@@ -100,6 +102,48 @@ func _run_multiplayer_smoke() -> void:
 	if String(first_state.get("mapId", "")) != "zone.neutral-crossroads" or String(second_state.get("mapId", "")) != "zone.neutral-crossroads":
 		_fail("The server snapshot did not authoritatively update both map IDs.")
 		return
+	# The server must reject attacks in the protected crossroads without changing health.
+	var health_before_safe_attack := int(second_state.get("health", 0))
+	var result_count_before := combat_results.size()
+	panel_a.send_basic_attack(character_b_id)
+	if not await _wait_for_combat_result(result_count_before):
+		_fail("The server did not return a combat result for the peace-zone attack.")
+		return
+	var safe_result: Dictionary = combat_results.back()
+	if bool(safe_result.get("accepted", true)) or String(safe_result.get("reason", "")) != "SAFE_ZONE":
+		_fail("The server did not reject the peace-zone attack with SAFE_ZONE.")
+		return
+	if int(_find_player(panel_b.last_world_snapshot, character_b_id).get("health", 0)) != health_before_safe_attack:
+		_fail("A rejected peace-zone attack changed character health.")
+		return
+
+	panel_a.request_zone_transition("zone.ashen-frontier")
+	panel_b.request_zone_transition("zone.ashen-frontier")
+	if not await _wait_for_zone(panel_a, "zone.ashen-frontier") or not await _wait_for_zone(panel_b, "zone.ashen-frontier"):
+		_fail("Both factions could not enter the contested Ashen Frontier through the server gate.")
+		return
+	if not await _wait_for_player_count(panel_a, 2):
+		_fail("The contested zone did not replicate both faction characters.")
+		return
+	var target_before_attack := _find_player(panel_a.last_world_snapshot, character_b_id)
+	if target_before_attack.is_empty():
+		_fail("The Ashen target was missing from the contested-zone snapshot.")
+		return
+	var target_health_before := int(target_before_attack.get("health", 0))
+	await create_timer(0.15).timeout
+	result_count_before = combat_results.size()
+	panel_a.send_basic_attack(character_b_id)
+	if not await _wait_for_combat_result(result_count_before):
+		_fail("The server did not return a result for the contested-zone attack.")
+		return
+	var successful_attack: Dictionary = combat_results.back()
+	if not bool(successful_attack.get("accepted", false)) or int(successful_attack.get("damage", 0)) <= 0:
+		_fail("The server rejected a valid enemy-faction attack in the contested zone.")
+		return
+	if not await _wait_for_player_health(panel_a, character_b_id, target_health_before - int(successful_attack.get("damage", 0))):
+		_fail("The authoritative world snapshot did not reflect server-applied combat damage.")
+		return
+
 	var initial_b_x := float(second_state.get("position", {}).get("x", 0.0))
 	for _intent in range(8):
 		panel_b.send_move_intent(1.0, 0.0)
@@ -187,6 +231,26 @@ func _run_multiplayer_smoke() -> void:
 	await process_frame
 	quit(0)
 
+
+func _on_panel_a_combat_result(result: Dictionary) -> void:
+	combat_results.append(result.duplicate(true))
+
+
+func _wait_for_combat_result(previous_count: int) -> bool:
+	for _frame in range(300):
+		if combat_results.size() > previous_count:
+			return true
+		await process_frame
+	return false
+
+
+func _wait_for_player_health(panel: Control, character_id: String, target_health: int) -> bool:
+	for _frame in range(300):
+		var state := _find_player(panel.last_world_snapshot, character_id)
+		if not state.is_empty() and int(state.get("health", 999999)) <= target_health:
+			return true
+		await process_frame
+	return false
 
 func _on_panel_a_world_joined(_character: Dictionary) -> void:
 	panel_a_join_count += 1

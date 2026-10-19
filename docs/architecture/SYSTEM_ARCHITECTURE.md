@@ -132,3 +132,11 @@ The Godot client advances its local avatar on a fixed 20 Hz prediction step usin
 Unexpected world disconnects schedule bounded exponential retries (1, 2, 4, 8, then 15 seconds), up to five attempts. Each retry obtains a fresh single-use join ticket; if the access token has expired, the client may rotate its in-memory refresh token first. Intentional logout/teardown cancels retries, and successful room admission resets retry state.
 
 PostgreSQL character leases distinguish active connections from disconnected sessions using the disconnected_at timestamp. During the 60-second recovery grace, only the same authenticated session may reclaim a lease explicitly marked disconnected. A second concurrently active connection cannot steal the lease. After the grace lease expires, normal expiry-based takeover applies. The initial migration remains an unreleased development schema and has not been applied to production.
+
+## Server-authoritative combat foundation (Phase 15)
+
+- The client submits only `targetCharacterId` via `C2S_CombatIntent`; strict parsing rejects extra fields so clients cannot author damage, range, faction, or health.
+- The world room resolves the target from authenticated active character state and applies fixed basic-attack damage on the server. Current provisional tuning: 2.5 planar units, 20 damage, one-second attack cooldown, and a 100 ms intent rate limit.
+- Attacks require a living attacker and target, the same map, an enabled non-safe PvP zone, an opposing faction, and melee range. Protected starts and Wayfarer Crossroads reject attacks; zone boundaries prevent cross-map attacks.
+- Accepted combat results are sent to clients currently in the same map. Rejections are returned to the attacker. World snapshots remain the authoritative health replication path.
+- This is a combat foundation, not a complete combat system: no ability system, PvE enemy AI, death/respawn, persistent combat health, animation, line-of-sight, or balance pass is claimed. Damage values are provisional.

@@ -5,7 +5,13 @@ import {
   PROTOCOL_VERSION,
   type RoomJoinSuccess,
   type WorldSnapshotEnvelope,
+  type CombatResultEnvelope,
 } from "@shattered-firmament/shared/protocol";
+import {
+  COMBAT_RULES,
+  parseCombatIntent,
+  resolveBasicAttack,
+} from "./combat.js";
 import {
   FACTION_START_ZONE,
   isPositionWalkable,
@@ -47,6 +53,8 @@ interface WorldPlayerRuntime extends PlayerMovementState {
   maxHealth: number;
   lastIntentAtMs: number;
   invalidIntentCount: number;
+  lastCombatIntentAtMs: number;
+  lastAttackAtMs: number;
 }
 
 const POSITION_CHECKPOINT_INTERVAL_MS = 5_000;
@@ -71,6 +79,9 @@ export class WorldRoom extends Room<
     this.pool = options.pool;
     this.onMessage("C2S_MoveIntent", (client, message: unknown) => {
       this.handleMoveIntent(client, message);
+    });
+    this.onMessage("C2S_CombatIntent", (client, message: unknown) => {
+      this.handleCombatIntent(client, message);
     });
     this.onMessage("C2S_ZoneTransition", (client, message: unknown) => {
       this.handleZoneTransition(client, message);
@@ -150,6 +161,8 @@ export class WorldRoom extends Room<
       maxHealth: auth.character.maxHealth,
       lastIntentAtMs: 0,
       invalidIntentCount: 0,
+      lastCombatIntentAtMs: 0,
+      lastAttackAtMs: 0,
     };
     this.playerStates.set(client.sessionId, state);
 
@@ -297,6 +310,111 @@ export class WorldRoom extends Room<
     });
   }
 
+  private handleCombatIntent(client: Client, message: unknown) {
+    const attacker = this.playerStates.get(client.sessionId);
+    if (!attacker) return;
+    const now = Date.now();
+    if (
+      now - attacker.lastCombatIntentAtMs <
+      COMBAT_RULES.intentMinimumIntervalMs
+    )
+      return;
+    attacker.lastCombatIntentAtMs = now;
+    const intent = parseCombatIntent(message);
+    if (!intent) {
+      this.sendCombatResult(client, attacker.characterId, "", {
+        accepted: false,
+        reason: "INVALID_INTENT",
+        damage: 0,
+      });
+      return;
+    }
+    const targetEntry = [...this.playerStates.entries()].find(
+      ([, state]) => state.characterId === intent.targetCharacterId,
+    );
+    const target = targetEntry?.[1];
+    const result = resolveBasicAttack({
+      attacker: {
+        characterId: attacker.characterId,
+        factionId: attacker.factionId,
+        mapId: attacker.mapId,
+        x: attacker.x,
+        y: attacker.y,
+        health: attacker.health,
+        maxHealth: attacker.maxHealth,
+      },
+      target: target
+        ? {
+            characterId: target.characterId,
+            factionId: target.factionId,
+            mapId: target.mapId,
+            x: target.x,
+            y: target.y,
+            health: target.health,
+            maxHealth: target.maxHealth,
+          }
+        : undefined,
+      nowMs: now,
+      lastAttackAtMs: attacker.lastAttackAtMs,
+    });
+    if (result.accepted && target) {
+      target.health = result.targetHealth ?? target.health;
+      attacker.lastAttackAtMs = now;
+    }
+    const envelope: CombatResultEnvelope = {
+      type: "S2C_CombatResult",
+      protocolVersion: PROTOCOL_VERSION,
+      payload: {
+        accepted: result.accepted,
+        attackerCharacterId: attacker.characterId,
+        targetCharacterId: intent.targetCharacterId,
+        damage: result.damage,
+        ...(result.targetHealth === undefined
+          ? {}
+          : { targetHealth: result.targetHealth }),
+        reason: result.reason ?? null,
+        serverTick: this.serverTick,
+      },
+    };
+    if (result.accepted && target) {
+      for (const recipient of this.clients) {
+        const recipientState = this.playerStates.get(recipient.sessionId);
+        if (recipientState?.mapId === attacker.mapId)
+          recipient.send("S2C_CombatResult", envelope);
+      }
+    } else {
+      client.send("S2C_CombatResult", envelope);
+    }
+  }
+
+  private sendCombatResult(
+    client: Client,
+    attackerCharacterId: string,
+    targetCharacterId: string,
+    result: {
+      accepted: boolean;
+      reason?: string;
+      damage: number;
+      targetHealth?: number;
+    },
+  ) {
+    const envelope: CombatResultEnvelope = {
+      type: "S2C_CombatResult",
+      protocolVersion: PROTOCOL_VERSION,
+      payload: {
+        accepted: result.accepted,
+        attackerCharacterId,
+        targetCharacterId,
+        damage: result.damage,
+        ...(result.targetHealth === undefined
+          ? {}
+          : { targetHealth: result.targetHealth }),
+        reason: result.reason ?? null,
+        serverTick: this.serverTick,
+      },
+    };
+    client.send("S2C_CombatResult", envelope);
+  }
   private simulateWorld() {
     this.serverTick += 1;
     for (const state of this.playerStates.values()) {

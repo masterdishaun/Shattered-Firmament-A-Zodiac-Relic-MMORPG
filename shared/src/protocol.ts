@@ -1,5 +1,4 @@
 export const PROTOCOL_VERSION = 1 as const;
-
 export interface ErrorEnvelope {
   type: "S2C_Error";
   protocolVersion: typeof PROTOCOL_VERSION;
@@ -19,7 +18,6 @@ export interface ErrorEnvelope {
     retryable: boolean;
   };
 }
-
 export interface RoomJoinSuccess {
   type: "S2C_RoomJoinSuccess";
   protocolVersion: typeof PROTOCOL_VERSION;
@@ -46,13 +44,27 @@ export interface RoomJoinSuccess {
     serverTime: string;
   };
 }
-
 export interface ClientMoveIntent {
   sequence: number;
   axisX: number;
   axisY: number;
 }
-
+export interface ClientCombatIntent {
+  targetCharacterId: string;
+}
+export interface CombatResultEnvelope {
+  type: "S2C_CombatResult";
+  protocolVersion: typeof PROTOCOL_VERSION;
+  payload: {
+    accepted: boolean;
+    attackerCharacterId: string;
+    targetCharacterId: string;
+    damage: number;
+    targetHealth?: number;
+    reason: string | null;
+    serverTick: number;
+  };
+}
 export interface WorldPlayerSnapshot {
   characterId: string;
   name: string;
@@ -62,7 +74,6 @@ export interface WorldPlayerSnapshot {
   health: number;
   maxHealth: number;
 }
-
 export interface WorldSnapshotEnvelope {
   type: "S2C_WorldSnapshot";
   protocolVersion: typeof PROTOCOL_VERSION;

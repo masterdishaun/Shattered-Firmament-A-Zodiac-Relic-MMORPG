@@ -70,3 +70,43 @@ test("world snapshot schema accepts the versioned server-authoritative shape", a
   );
   assert.equal(validate({ ...snapshot, protocolVersion: 2 }), false);
 });
+
+test("combat intent schema only permits a target character ID", async () => {
+  const validate = new Ajv2020({ allErrors: true }).compile(
+    await readSchema("combat-intent"),
+  );
+  assert.equal(validate({ targetCharacterId: "character-123" }), true);
+  assert.equal(
+    validate({ targetCharacterId: "character-123", damage: 999 }),
+    false,
+  );
+  assert.equal(validate({ targetCharacterId: "" }), false);
+});
+
+test("combat result schema accepts server-owned damage and rejects malformed results", async () => {
+  const validate = new Ajv2020({ allErrors: true }).compile(
+    await readSchema("combat-result"),
+  );
+  const result = {
+    type: "S2C_CombatResult",
+    protocolVersion: 1,
+    payload: {
+      accepted: true,
+      attackerCharacterId: "attacker",
+      targetCharacterId: "target",
+      damage: 20,
+      targetHealth: 80,
+      reason: null,
+      serverTick: 120,
+    },
+  };
+  assert.equal(validate(result), true, JSON.stringify(validate.errors));
+  assert.equal(
+    validate({ ...result, payload: { ...result.payload, damage: -5 } }),
+    false,
+  );
+  assert.equal(
+    validate({ ...result, payload: { ...result.payload, clientDamage: 999 } }),
+    false,
+  );
+});

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shattered-firmament.dev/schemas/combat-result.schema.json",
+  "title": "CombatResultEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocolVersion", "payload"],
+  "properties": {
+    "type": { "const": "S2C_CombatResult" },
+    "protocolVersion": { "const": 1 },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted",
+        "attackerCharacterId",
+        "targetCharacterId",
+        "damage",
+        "reason",
+        "serverTick"
+      ],
+      "properties": {
+        "accepted": { "type": "boolean" },
+        "attackerCharacterId": { "type": "string", "minLength": 1 },
+        "targetCharacterId": { "type": "string", "minLength": 1 },
+        "damage": { "type": "integer", "minimum": 0 },
+        "targetHealth": { "type": "integer", "minimum": 0 },
+        "reason": { "type": ["string", "null"] },
+        "serverTick": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

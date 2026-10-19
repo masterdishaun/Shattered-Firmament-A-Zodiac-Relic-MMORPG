@@ -159,11 +159,38 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_3:
 			if network_panel == null or not network_panel.world_connected:
 				_move_to_faction_start(2)
+		KEY_F:
+			_request_basic_attack()
 		KEY_E:
 			_interact_with_relic()
 		KEY_T:
 			_request_zone_transition()
 
+
+func _request_basic_attack() -> void:
+	if network_panel == null or not network_panel.world_connected:
+		feedback_label.text = "Connect to the online world before attacking."
+		return
+	var nearest_id := ""
+	var nearest_distance := 2.5
+	for character_id in remote_targets.keys():
+		var target: Dictionary = remote_targets[character_id]
+		var target_position: Vector3 = target.get("position", Vector3.ZERO)
+		var distance := Vector2(player.global_position.x, player.global_position.z).distance_to(Vector2(target_position.x, target_position.z))
+		if distance <= nearest_distance:
+			nearest_distance = distance
+			nearest_id = String(character_id)
+	if nearest_id.is_empty():
+		feedback_label.text = "No target in melee range. Find an enemy in a contested PvP zone."
+		return
+	network_panel.send_basic_attack(nearest_id)
+
+
+func _on_combat_result(result: Dictionary) -> void:
+	if bool(result.get("accepted", false)):
+		feedback_label.text = "Combat confirmed by server: %d damage." % int(result.get("damage", 0))
+	else:
+		feedback_label.text = "Combat rejected by server: %s." % String(result.get("reason", "unknown"))
 
 func _request_zone_transition() -> void:
 	if network_panel == null or not network_panel.world_connected:
@@ -465,6 +492,7 @@ func _toggle_network_panel() -> void:
 		network_panel.character_ticketed.connect(_on_character_ticketed)
 		network_panel.world_joined.connect(_on_world_joined)
 		network_panel.world_snapshot.connect(_on_world_snapshot)
+		network_panel.combat_result.connect(_on_combat_result)
 		network_panel.zone_changed.connect(_on_zone_changed)
 		network_panel.close_requested.connect(_close_network_panel)
 	network_panel.visible = not network_panel.visible
@@ -490,7 +518,7 @@ func _on_world_joined(character: Dictionary) -> void:
 	has_authoritative_snapshot = false
 	prediction_accumulator = 0.0
 	last_applied_snapshot_tick = 0
-	feedback_label.text = "Server room handshake confirmed for %s. Authoritative movement is active; combat is not implemented yet." % String(character.get("name", "character"))
+	feedback_label.text = "Server room handshake confirmed for %s. Authoritative movement and basic combat are active." % String(character.get("name", "character"))
 
 
 func _on_zone_changed(zone: Dictionary) -> void:
