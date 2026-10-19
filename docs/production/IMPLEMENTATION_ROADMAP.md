@@ -82,7 +82,7 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Added `.github/workflows/ci.yml` to run frozen pnpm installation, build, typecheck, tests and lint on pushes and pull requests targeting `main`, with a manual dispatch option. The first GitHub-hosted workflow result is pending until this change is pushed and Actions completes.
 - Verified on the workstation after a frozen install: `pnpm build`, `pnpm typecheck`, `pnpm test` (4 tests), `pnpm lint`, and Godot 4.7.2 headless editor initialisation all exited successfully.
 - Fixed stale canonical-document paths in `AGENTS.md` and formatted existing TypeScript/JSON files with Prettier.
-- PostgreSQL migration execution and database integration remain unverified because PostgreSQL/Docker CLI tools are not currently available on the workstation.
+- A disposable PostgreSQL 17 cluster was created locally for migration integration tests and removed after testing. The installed workstation PostgreSQL service was not accessed. CI now provisions a fresh PostgreSQL 17 test service.
 - Phase 1 exit criteria passed on 2026-10-19. GitHub Actions run for the workspace CI workflow completed successfully: https://github.com/masterdishaun/Shattered-Firmament-A-Zodiac-Relic-MMORPG/actions/runs/39277218695. Phase 2 content contracts and graph invariants are in progress.
 
 ## Progress log — Phase 2 content contracts
@@ -92,3 +92,10 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Expanded automated content checks to detect duplicate IDs, missing quest prerequisites, prerequisite cycles, invalid faction-start/PvP rules, missing zone/reward/item references, invalid ranges and progression milestone drift.
 - Local shared-content suite now has 9 passing tests; API suite has 2 passing tests. Full build, typecheck, tests, lint and Godot 4.7.2 headless editor initialisation were rerun successfully before commit.
 - Phase 2 is in progress, not complete. Inventory/trade runtime schemas, skills/effects, localization/version loading and content-loader integration remain open.
+
+## Progress log ? Phase 3 persistence foundation
+
+- Added a numbered migration runner with a PostgreSQL advisory lock, transactional migration application, migration ledger, SHA-256 checksums and edited-migration drift detection.
+- Removed the transaction wrapper from the unreleased initial SQL draft so the runner can commit schema changes and the migration ledger record atomically.
+- Added integration tests for initial schema creation, idempotent reruns and checksum drift; executed against a disposable PostgreSQL 17 cluster on the workstation: 2 migration tests passed.
+- Added PostgreSQL 17 service and TEST_DATABASE_URL to GitHub Actions. CI must pass on the resulting commit before this phase is considered verified.

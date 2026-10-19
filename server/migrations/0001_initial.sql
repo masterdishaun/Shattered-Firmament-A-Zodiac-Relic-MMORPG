@@ -1,6 +1,5 @@
-﻿-- Shattered Firmament initial schema.
+-- Shattered Firmament initial schema.
 -- PostgreSQL 15+. Applied only by the migration runner; never edit after release.
-BEGIN;
 
 CREATE TABLE users (
   id UUID PRIMARY KEY,
@@ -191,6 +190,3 @@ CREATE TABLE active_character_leases (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX active_character_leases_expiry_idx ON active_character_leases (lease_expires_at);
-
-COMMIT;
-

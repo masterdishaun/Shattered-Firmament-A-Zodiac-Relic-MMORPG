@@ -43,3 +43,12 @@ Run Godot:
 ## Status boundaries
 
 Build/type-check/test/lint success applies only to the current scaffold. It does not establish a playable MMORPG, database integration, Colyseus admission, production performance or platform exports.
+
+## Database migrations
+
+- The workstation has PostgreSQL 17 installed. Integration tests use a disposable database; do not point test commands at a personal, shared or production database.
+- Set `DATABASE_URL` to a development database before running `corepack pnpm --filter @shattered-firmament/server migrate`.
+- The runner takes a PostgreSQL advisory lock, applies numbered SQL files transactionally, records a SHA-256 checksum, and refuses to silently reapply an edited migration.
+- For integration tests, set `TEST_DATABASE_URL` to a dedicated database whose name ends in `_test`, then run `corepack pnpm --filter @shattered-firmament/server test`. The test suite verifies migration application, idempotent reruns and migration checksum drift. Without that variable, database integration tests are skipped locally.
+- GitHub Actions provisions a fresh PostgreSQL 17 service and sets `TEST_DATABASE_URL` for every CI run.
+- Never commit a real connection string, password, or production credential. The SQL migration remains an unreleased draft and can be revised until the first production release.
