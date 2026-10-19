@@ -8,7 +8,7 @@
 
 - **Perspective:** 2.5D isometric; 3D characters and environments under a fixed or semi-fixed camera.
 - **Engine:** Godot 4.x. Godot 4.7.2 is installed at `D:\GitHub\Game Development\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe`. Do not use Godot 3 for this scaffold unless an ADR approves migration.
-- **Server:** Node.js + TypeScript, planned Colyseus authoritative rooms.
+- **Server:** Node.js + TypeScript API with Colyseus room admission foundation; authoritative gameplay simulation is still in progress.
 - **Database:** PostgreSQL.
 - **Simulation target:** 20 Hz authoritative simulation.
 - **Network:** HTTPS account/character flow, short-lived single-use join tickets, WSS gameplay.
@@ -46,7 +46,7 @@ _Battle of the Immortals_, _Jade Dynasty_, _Diablo_ and _Torchlight_ are inspira
 
 ```text
 client/     Godot project
-server/     TypeScript API and authoritative simulation
+server/     TypeScript API, authentication, persistence and Colyseus admission foundation
 shared/     Protocol types, JSON Schemas and content fixtures
 docs/       Canonical narrative, gameplay, architecture and production docs
 infra/      Local development, CI and deployment
@@ -65,4 +65,4 @@ tools/      Content validation and balance utilities
 
 ## Current status
 
-Initial scaffold and documentation consolidation. The API health endpoints, shared schema/content tests and initial SQL migration draft exist. A GitHub Actions CI workflow now runs build, typecheck, tests and lint; its first hosted result is pending. Authentication and character persistence, Colyseus rooms, authoritative movement/combat, actual world maps, complete dialogue, assets and Godot export verification remain outstanding. A transactional migration runner and PostgreSQL integration tests exist; the initial schema was tested only against a disposable local PostgreSQL 17 cluster, not any shared or production database. Local build/typecheck/test/lint checks and Godot 4.7.2 headless editor initialisation passed; this does not mean the game is playable or production-ready.
+Implemented foundation: transactional PostgreSQL migrations; account registration/login, session-backed access tokens and refresh rotation; character create/list/select with faction-specific start maps; hashed short-lived join tickets consumed atomically by a Colyseus world room; and a local Godot 4.7.2 isometric-style blockout with three faction starts, movement and relic interactions. Local build/typecheck/test/lint passed against a disposable PostgreSQL 17 test cluster, and a standalone Godot prototype smoke test passed. The Colyseus server start/shutdown smoke test also passed. These are local verification results, not a production deployment or visual GUI playtest. Remaining: authoritative movement/combat and snapshots, API-to-client connection, reconnection, rate limiting and account recovery, final art/dialogue, Godot export verification and production security/load testing. GitHub Actions verification for the latest change is pending after push.

@@ -38,10 +38,13 @@ export function createGameServer(databaseUrl: string): GameServerService {
       listening = true;
     },
     close: async () => {
-      if (listening) {
-        await gameServer.gracefullyShutdown(false);
+      try {
+        if (listening) {
+          await gameServer.gracefullyShutdown(false);
+        }
+      } finally {
+        await pool.end();
       }
-      await pool.end();
     },
   };
 }

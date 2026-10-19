@@ -60,3 +60,14 @@ No paid-exclusive competitive power; no punitive daily streaks; no destructive g
 ## 8. Provisional values
 
 Time-to-cap, gear power deltas, market fee, group sizes, drop rates, upgrade costs, boss windows and population limits are hypotheses until validated through simulation and closed playtests.
+## First playable client blockout
+
+The current Godot main scene is a local 3D/isometric-style prototype built entirely from primitive meshes and generated materials. It contains three visually distinct faction start areas, a controllable capsule character, a follow camera, collision-backed ground/platforms and nearby Zodiac relic interaction areas.
+
+Controls:
+
+- `W/A/S/D`: move relative to the isometric camera.
+- `E`: inspect a nearby Zodiac relic and reveal a faction-specific narrative snippet.
+- `1`, `2`, `3`: preview White Jade Bastion, Cinderwake or Luminous Veil starts. These are local prototype controls, not a persistent faction-change feature.
+
+The scene is a blockout, not representative final art or a full game client. It has no network client, animation system, combat, quest persistence, inventory UI, pathfinding or production zone boundary enforcement. The server's 20 Hz tick counter and the client movement prototype are not yet connected.

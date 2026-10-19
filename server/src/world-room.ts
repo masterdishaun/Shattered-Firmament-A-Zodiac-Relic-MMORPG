@@ -94,7 +94,7 @@ export class WorldRoom extends Room<
         world: {
           tickRate: 20,
           serverTick: this.serverTick,
-          snapshotRate: 20,
+          snapshotRate: 0,
           mapRevision: "blockout-001",
         },
         serverTime: new Date().toISOString(),
