@@ -106,3 +106,11 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Expanded PostgreSQL integration coverage to test case-insensitive account uniqueness, valid faction constraints, item definition references, positive inventory quantity, pet ownership isolation, join-ticket and active-lease composite account ownership, non-negative wallet balances, ledger idempotency, migration drift and failed-migration rollback.
 - Ran the full test suite against a disposable PostgreSQL 17 cluster: shared content 10/10, API and persistence 9/9. Build, TypeScript checks and lint pass. Temporary test cluster was shut down and removed.
 - This completes the content-contract and initial database-integrity slice. Authentication and character-selection endpoints are the next implementation milestone.
+
+## Progress log ? Phase 4 authentication and character entry
+
+- Added salted scrypt password hashing, HS256-signed 15-minute access tokens, 30-day opaque refresh tokens stored only as SHA-256 hashes, session-backed authorization, refresh rotation, logout revocation and generic login failures.
+- Added account registration, login by email or username, refresh, logout and current-account routes. Registration persists the account and initial session in one transaction.
+- Added character list/create/select routes. Character creation validates archetype/faction and selects the matching protected faction start map. Selection verifies ownership and issues a 60-second join ticket with only its hash persisted.
+- Added security-primitive and PostgreSQL-backed API tests covering password hashes, signed-token tampering/expiry, account registration, duplicate accounts, login failure, refresh replay, logout revocation, faction start map selection, ticket hash storage and cross-account character selection.
+- Join-ticket consumption at Colyseus room admission, distributed rate limiting, email verification/recovery, refresh-family replay response and production security/load review remain outstanding.

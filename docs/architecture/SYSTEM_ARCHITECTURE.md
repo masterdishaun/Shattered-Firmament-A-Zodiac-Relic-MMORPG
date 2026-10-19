@@ -80,3 +80,13 @@ Track tick duration/overruns, room population, snapshot sizes, latency, reconnec
 ## Required tests
 
 Contract/schema tests; malformed-protocol tests; auth/ownership integration tests; ticket replay/expiry/concurrency tests; atomic trade/reward tests; migration/restore tests; safe-zone boundary tests; quest idempotency tests; boss reward anti-monopoly tests; performance/load tests and Godot export checks.
+
+## Initial authentication and character API
+
+- `POST /v1/auth/register` creates an account and session; `POST /v1/auth/login` accepts email or username plus password. Passwords use salted scrypt hashes; no plaintext password is stored.
+- `POST /v1/auth/refresh` rotates refresh tokens. Only SHA-256 hashes of opaque refresh tokens are persisted. Replayed/revoked refresh tokens are rejected. Access tokens are HS256-signed, 15-minute bearer tokens and are checked against the active database session on protected requests.
+- `POST /v1/auth/logout` revokes the active session; `GET /v1/auth/me` returns the authenticated account. Set `ACCESS_TOKEN_SECRET` to a cryptographically random secret of at least 32 bytes; auth routes fail closed if it is absent or too short.
+- `GET /v1/characters` lists only the authenticated account's active characters. `POST /v1/characters` validates the archetype/faction and assigns the faction start map: Sovereign Sect ? `white_jade_bastion`, Ashen Syndicate ? `cinderwake`, Astral Concord ? `luminous_veil`.
+- `POST /v1/characters/{characterId}/select` verifies ownership, updates last-played time and issues a random, 60-second join ticket. Only the SHA-256 ticket hash is stored, with account/character/destination/audience/protocol binding. Atomic ticket consumption at Colyseus admission is not implemented yet; these tickets must not be treated as consumed or usable by a game room until that integration exists.
+
+This is an initial implementation slice. Production hardening still requires distributed rate limiting, email verification and account recovery, password reset, security monitoring, secret rotation policy, refresh-token family replay handling, and load/security testing.
