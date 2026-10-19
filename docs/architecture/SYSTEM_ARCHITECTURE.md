@@ -90,3 +90,11 @@ Contract/schema tests; malformed-protocol tests; auth/ownership integration test
 - `POST /v1/characters/{characterId}/select` verifies ownership, updates last-played time and issues a random, 60-second join ticket. Only the SHA-256 ticket hash is stored, with account/character/destination/audience/protocol binding. Atomic ticket consumption at Colyseus admission is not implemented yet; these tickets must not be treated as consumed or usable by a game room until that integration exists.
 
 This is an initial implementation slice. Production hardening still requires distributed rate limiting, email verification and account recovery, password reset, security monitoring, secret rotation policy, refresh-token family replay handling, and load/security testing.
+
+## Colyseus room admission
+
+- When `DATABASE_URL` is configured, the process also starts the Colyseus WebSocket server on `GAME_HOST:GAME_PORT` (default `127.0.0.1:2568`); the HTTP API remains on `HOST:HTTP_PORT` (default `127.0.0.1:2567`).
+- Clients request a ticket through the authenticated character-selection API, then request the `world` room with `joinTicket` in the Colyseus join options. The room accepts no client-provided account or character identity.
+- `consumeJoinTicket` locks the ticket row, checks expiry, prior consumption, account/session status, character ownership, destination, audience and protocol version, then atomically acquires the character lease and marks the ticket consumed. Any failed step rolls back both changes. Replays are rejected.
+- A character lease prevents concurrent room admission even from the same account session. The room renews leases while connected; revoked/expired sessions stop renewing. Graceful leave releases the lease; unexpected disconnects leave a 60-second expiry window.
+- The current room sends the canonical `S2C_RoomJoinSuccess` envelope and maintains a 20 Hz server tick counter. Movement, combat, state replication, reconnection recovery, multi-process presence and load-tested capacity are not implemented; this is an admission/handshake foundation, not a playable MMORPG world.

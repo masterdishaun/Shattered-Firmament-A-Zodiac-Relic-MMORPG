@@ -601,12 +601,13 @@ export const createApp = (
         const ticketExpiresAt = new Date(Date.now() + JOIN_TICKET_TTL_MS);
         await client.query(
           `INSERT INTO join_tickets
-            (id, token_hash, user_id, character_id, destination, audience, protocol_version, expires_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            (id, token_hash, user_id, session_id, character_id, destination, audience, protocol_version, expires_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
           [
             randomUUID(),
             hashOpaqueToken(rawJoinTicket),
             auth.id,
+            auth.sessionId,
             character.id,
             "world-main",
             "gameplay",

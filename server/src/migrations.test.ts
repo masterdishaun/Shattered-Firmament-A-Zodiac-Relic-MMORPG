@@ -284,12 +284,24 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
       "ashen_syndicate",
     );
 
+    const firstSessionId = randomUUID();
+    await pool.query(
+      `INSERT INTO auth_sessions (id, user_id, refresh_token_hash, expires_at)
+       VALUES ($1, $2, $3, now() + interval '1 hour')`,
+      [firstSessionId, firstUserId, "a".repeat(64)],
+    );
     await expect(
       pool.query(
         `INSERT INTO join_tickets
-          (id, token_hash, user_id, character_id, destination, audience, protocol_version, expires_at)
-         VALUES ($1, $2, $3, $4, 'world-main', 'gameplay', 1, now() + interval '5 minutes')`,
-        [randomUUID(), "a".repeat(64), firstUserId, secondCharacterId],
+          (id, token_hash, user_id, session_id, character_id, destination, audience, protocol_version, expires_at)
+         VALUES ($1, $2, $3, $4, $5, 'world-main', 'gameplay', 1, now() + interval '5 minutes')`,
+        [
+          randomUUID(),
+          "c".repeat(64),
+          firstUserId,
+          firstSessionId,
+          secondCharacterId,
+        ],
       ),
     ).rejects.toThrow();
 

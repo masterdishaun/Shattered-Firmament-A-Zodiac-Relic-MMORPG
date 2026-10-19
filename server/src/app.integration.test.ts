@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { createApp, type ShatteredFirmamentApp } from "./app.js";
 import { runMigrations } from "./migrations.js";
 import { hashOpaqueToken } from "./security.js";
+import { consumeJoinTicket, extendCharacterLease } from "./join-tickets.js";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 const databaseSuite = testDatabaseUrl ? describe : describe.skip;
@@ -144,6 +145,49 @@ databaseSuite("authentication and character API integration", () => {
     );
     expect(ticketRow.rows[0]?.token_hash).not.toBe(ticketResponse.joinTicket);
 
+    const admitted = await consumeJoinTicket(
+      migrationPool,
+      ticketResponse.joinTicket,
+    );
+    expect(admitted).toMatchObject({
+      userId: tokens.user.id,
+      sessionId: expect.any(String),
+      character: { id: character.id, mapId: "cinderwake" },
+    });
+    await expect(
+      consumeJoinTicket(migrationPool, ticketResponse.joinTicket),
+    ).rejects.toMatchObject({ code: "JOIN_TICKET_INVALID" });
+
+    const sameSessionSelection = await service.app.inject({
+      method: "POST",
+      url: `/v1/characters/${character.id}/select`,
+      headers: { authorization: `Bearer ${tokens.accessToken}` },
+    });
+    expect(sameSessionSelection.statusCode).toBe(200);
+    await expect(
+      consumeJoinTicket(migrationPool, sameSessionSelection.json().joinTicket),
+    ).rejects.toMatchObject({ code: "CHARACTER_ALREADY_ACTIVE" });
+
+    const secondLogin = await service.app.inject({
+      method: "POST",
+      url: "/v1/auth/login",
+      payload: {
+        identifier: "deeplayer",
+        password: "correct horse battery staple 42",
+      },
+    });
+    expect(secondLogin.statusCode).toBe(200);
+    const secondTokens = secondLogin.json();
+    const secondSelection = await service.app.inject({
+      method: "POST",
+      url: `/v1/characters/${character.id}/select`,
+      headers: { authorization: `Bearer ${secondTokens.accessToken}` },
+    });
+    expect(secondSelection.statusCode).toBe(200);
+    await expect(
+      consumeJoinTicket(migrationPool, secondSelection.json().joinTicket),
+    ).rejects.toMatchObject({ code: "CHARACTER_ALREADY_ACTIVE" });
+
     const other = await registerAccount("other@example.test", "OtherPlayer");
     const foreignSelection = await service.app.inject({
       method: "POST",
@@ -245,5 +289,80 @@ databaseSuite("authentication and character API integration", () => {
       },
     });
     expect(unauthenticated.statusCode).toBe(401);
+  });
+  it("rejects tickets issued for a different audience without consuming them", async () => {
+    const tokens = await registerAccount(
+      "context@example.test",
+      "ContextPlayer",
+    );
+    const create = await service.app.inject({
+      method: "POST",
+      url: "/v1/characters",
+      headers: { authorization: `Bearer ${tokens.accessToken}` },
+      payload: {
+        name: "Context Hero",
+        classId: "mystic",
+        factionId: "astral_concord",
+      },
+    });
+    expect(create.statusCode).toBe(201);
+    const characterId = create.json().character.id;
+
+    const selected = await service.app.inject({
+      method: "POST",
+      url: `/v1/characters/${characterId}/select`,
+      headers: { authorization: `Bearer ${tokens.accessToken}` },
+    });
+    expect(selected.statusCode).toBe(200);
+    const ticket = selected.json().joinTicket;
+    await migrationPool.query(
+      "UPDATE join_tickets SET audience = 'admin' WHERE token_hash = $1",
+      [hashOpaqueToken(ticket)],
+    );
+
+    await expect(
+      consumeJoinTicket(migrationPool, ticket),
+    ).rejects.toMatchObject({
+      code: "JOIN_TICKET_CONTEXT_MISMATCH",
+    });
+    const stored = await migrationPool.query<{ consumed_at: Date | null }>(
+      "SELECT consumed_at FROM join_tickets WHERE token_hash = $1",
+      [hashOpaqueToken(ticket)],
+    );
+    expect(stored.rows[0]?.consumed_at).toBeNull();
+  });
+  it("stops renewing a character lease after its account session is revoked", async () => {
+    const tokens = await registerAccount("lease@example.test", "LeasePlayer");
+    const create = await service.app.inject({
+      method: "POST",
+      url: "/v1/characters",
+      headers: { authorization: `Bearer ${tokens.accessToken}` },
+      payload: {
+        name: "Lease Hero",
+        classId: "support",
+        factionId: "sovereign_sect",
+      },
+    });
+    expect(create.statusCode).toBe(201);
+    const characterId = create.json().character.id;
+    const selected = await service.app.inject({
+      method: "POST",
+      url: `/v1/characters/${characterId}/select`,
+      headers: { authorization: `Bearer ${tokens.accessToken}` },
+    });
+    expect(selected.statusCode).toBe(200);
+    const admitted = await consumeJoinTicket(
+      migrationPool,
+      selected.json().joinTicket,
+    );
+    expect(await extendCharacterLease(migrationPool, admitted)).toBe(true);
+
+    const logout = await service.app.inject({
+      method: "POST",
+      url: "/v1/auth/logout",
+      headers: { authorization: `Bearer ${tokens.accessToken}` },
+    });
+    expect(logout.statusCode).toBe(204);
+    expect(await extendCharacterLease(migrationPool, admitted)).toBe(false);
   });
 });

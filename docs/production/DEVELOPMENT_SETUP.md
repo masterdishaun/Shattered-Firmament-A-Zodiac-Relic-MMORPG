@@ -58,3 +58,9 @@ Build/type-check/test/lint success applies only to the current scaffold. It does
 - Copy `server/.env.example` to a local, untracked environment file and set `ACCESS_TOKEN_SECRET` to a cryptographically random value of at least 32 bytes. Generate one with `node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"`. Do not commit the resulting secret.
 - The API fails closed for authentication routes when the database or a sufficiently long signing secret is not configured. Access tokens last 15 minutes; rotating refresh tokens last 30 days.
 - Integration tests require `TEST_DATABASE_URL` pointing to a disposable database whose name ends in `_test`. The authentication suite creates an isolated schema and removes it after testing.
+
+## API and game server ports
+
+- HTTP API: `HOST` / `HTTP_PORT` (defaults `127.0.0.1:2567`).
+- Colyseus WebSocket server: `GAME_HOST` / `GAME_PORT` (defaults `127.0.0.1:2568`); it starts only when `DATABASE_URL` is configured. Keep it behind the intended TLS/WebSocket edge in deployment.
+- A join ticket is only usable once, expires after 60 seconds, and is consumed at room admission. A character with an active lease cannot be admitted into a second room connection until the lease is released or expires.

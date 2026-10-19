@@ -114,3 +114,11 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Added character list/create/select routes. Character creation validates archetype/faction and selects the matching protected faction start map. Selection verifies ownership and issues a 60-second join ticket with only its hash persisted.
 - Added security-primitive and PostgreSQL-backed API tests covering password hashes, signed-token tampering/expiry, account registration, duplicate accounts, login failure, refresh replay, logout revocation, faction start map selection, ticket hash storage and cross-account character selection.
 - Join-ticket consumption at Colyseus room admission, distributed rate limiting, email verification/recovery, refresh-family replay response and production security/load review remain outstanding.
+
+## Progress log ? Phase 5 Colyseus admission foundation
+
+- Bound each join ticket to its originating auth session in the unreleased initial schema; the composite foreign key prevents tickets mixing a user, session and character from different accounts.
+- Implemented atomic join-ticket consumption with row locking, expiry/replay checks, account/session/character status checks, destination/audience/protocol binding, and transactional character-lease acquisition.
+- Added a Colyseus `world` room that requires a join ticket, sends `S2C_RoomJoinSuccess`, tracks a 20 Hz server tick counter and renews character leases only while the auth session remains active. API and game servers use separate configurable ports.
+- Integration tests now cover one-time ticket consumption, audience mismatch without consumption, concurrent character lease conflicts, and lease renewal stopping after logout. A standalone Colyseus start/shutdown smoke test passed against a disposable PostgreSQL 17 cluster.
+- Remaining: movement/combat simulation, authoritative room state and snapshots, reconnection flow, rate limiting, production TLS/proxy deployment checks and real client connection testing.

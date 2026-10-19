@@ -58,6 +58,7 @@ CREATE TABLE join_tickets (
   id UUID PRIMARY KEY,
   token_hash CHAR(64) NOT NULL UNIQUE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id UUID NOT NULL,
   character_id UUID NOT NULL,
   destination TEXT NOT NULL,
   audience TEXT NOT NULL,
@@ -66,7 +67,8 @@ CREATE TABLE join_tickets (
   consumed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CHECK (expires_at > created_at),
-  FOREIGN KEY (character_id, user_id) REFERENCES characters(id, user_id) ON DELETE CASCADE
+  FOREIGN KEY (character_id, user_id) REFERENCES characters(id, user_id) ON DELETE CASCADE,
+  FOREIGN KEY (session_id, user_id) REFERENCES auth_sessions(id, user_id) ON DELETE CASCADE
 );
 CREATE INDEX join_tickets_expiry_idx ON join_tickets (expires_at) WHERE consumed_at IS NULL;
 CREATE INDEX join_tickets_character_idx ON join_tickets (character_id, created_at DESC);
