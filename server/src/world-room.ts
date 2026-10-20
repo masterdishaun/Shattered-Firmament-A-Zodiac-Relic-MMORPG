@@ -20,7 +20,12 @@ import {
   parseAbilityIntent,
   resolveAbility,
 } from "./abilities.js";
-import { createAshenWisp, stepEnemy, type PveEnemy } from "./pve.js";
+import {
+  ENEMY_DEFINITIONS,
+  createWorldEnemies,
+  stepEnemy,
+  type PveEnemy,
+} from "./pve.js";
 import {
   FACTION_START_ZONE,
   isPositionWalkable,
@@ -97,8 +102,8 @@ export class WorldRoom extends Room<
 
   override onCreate(options: WorldRoomOptions) {
     this.pool = options.pool;
-    const wisp = createAshenWisp(Date.now());
-    this.enemies.set(wisp.id, wisp);
+    for (const enemy of createWorldEnemies(Date.now()))
+      this.enemies.set(enemy.id, enemy);
     this.onMessage("C2S_MoveIntent", (client, message: unknown) => {
       this.handleMoveIntent(client, message);
     });
@@ -365,8 +370,11 @@ export class WorldRoom extends Room<
       if (enemy) {
         enemy.health = result.targetHealth ?? enemy.health;
         if (enemy.health <= 0) {
-          enemy.respawnAtMs = now + 8_000;
+          enemy.respawnAtMs =
+            now + ENEMY_DEFINITIONS[enemy.archetype].respawnDelayMs;
           enemy.aggroCharacterId = "";
+          enemy.aiState = "dead";
+          enemy.telegraphEndsAtMs = 0;
         }
       } else if (targetPlayer) {
         targetPlayer.health = result.targetHealth ?? targetPlayer.health;
@@ -671,6 +679,11 @@ export class WorldRoom extends Room<
               position: { x: enemy.x, y: enemy.y },
               health: enemy.health,
               maxHealth: enemy.maxHealth,
+              archetype: enemy.archetype,
+              attackStyle: enemy.attackStyle,
+              aiState: enemy.aiState,
+              telegraphEndsAtMs: enemy.telegraphEndsAtMs,
+              targetCharacterId: enemy.aggroCharacterId,
             })),
         },
       };

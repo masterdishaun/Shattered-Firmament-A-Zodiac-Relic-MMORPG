@@ -91,8 +91,22 @@ func _process(delta: float) -> void:
 		var enemy_avatar: Node3D = enemy_avatars.get(enemy_id)
 		var enemy_target: Dictionary = enemy_targets[enemy_id]
 		if enemy_avatar != null:
-			enemy_avatar.visible = int(enemy_target.get("health", 0)) > 0
+			var alive := int(enemy_target.get("health", 0)) > 0
+			enemy_avatar.visible = alive
 			enemy_avatar.global_position = enemy_avatar.global_position.lerp(enemy_target["position"], blend)
+			var telegraphing := String(enemy_target.get("aiState", "idle")) == "telegraph"
+			var telegraph: MeshInstance3D = enemy_avatar.get_node_or_null("AttackTelegraph") as MeshInstance3D
+			if telegraph != null:
+				telegraph.visible = alive and telegraphing
+				if telegraph.visible:
+					var pulse := 0.9 + 0.15 * sin(float(Time.get_ticks_msec()) * 0.018)
+					telegraph.scale = Vector3(pulse, 1.0, pulse)
+			var state_label: Label3D = enemy_avatar.get_node_or_null("EnemyStatus") as Label3D
+			if state_label != null:
+				var state_text := "HP %d/%d" % [int(enemy_target.get("health", 0)), int(enemy_target.get("maxHealth", 1))]
+				if telegraphing:
+					state_text += "  -  WIND-UP"
+				state_label.text = state_text
 		camera.global_position = player.global_position + CAMERA_OFFSET
 	camera.look_at(player.global_position + Vector3(0.0, 0.8, 0.0), Vector3.UP)
 	hud_refresh_elapsed += delta
@@ -660,7 +674,16 @@ func _update_enemy_avatars(snapshot: Dictionary) -> void:
 			add_child(avatar)
 			avatar.global_position = target_position
 			enemy_avatars[enemy_id] = avatar
-		enemy_targets[enemy_id] = {"position": target_position, "health": int(state.get("health", 0)), "maxHealth": int(state.get("maxHealth", 1))}
+		enemy_targets[enemy_id] = {
+			"position": target_position,
+			"health": int(state.get("health", 0)),
+			"maxHealth": int(state.get("maxHealth", 1)),
+			"archetype": String(state.get("archetype", "ashen-wisp")),
+			"attackStyle": String(state.get("attackStyle", "ranged")),
+			"aiState": String(state.get("aiState", "idle")),
+			"telegraphEndsAtMs": int(state.get("telegraphEndsAtMs", 0)),
+			"targetCharacterId": String(state.get("targetCharacterId", ""))
+		}
 	for enemy_id in enemy_avatars.keys():
 		if not present_ids.has(enemy_id):
 			var avatar: Node3D = enemy_avatars[enemy_id]
@@ -679,8 +702,26 @@ func _create_enemy_avatar(enemy_id: String, display_name: String) -> Node3D:
 	sphere.height = 0.96
 	mesh.mesh = sphere
 	mesh.position.y = 0.55
-	mesh.material_override = _material(Color(0.96, 0.36, 0.16), 0.25, 0.35)
+	mesh.material_override = _material(_enemy_color(enemy_id), 0.25, 0.35)
 	avatar.add_child(mesh)
+	var telegraph := MeshInstance3D.new()
+	telegraph.name = "AttackTelegraph"
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.58
+	ring.outer_radius = 0.72
+	telegraph.mesh = ring
+	telegraph.position.y = 0.08
+	telegraph.material_override = _material(Color(1.0, 0.16, 0.06), 0.3, 0.9)
+	telegraph.visible = false
+	avatar.add_child(telegraph)
+	var state_label := Label3D.new()
+	state_label.name = "EnemyStatus"
+	state_label.position.y = 1.7
+	state_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	state_label.font_size = 20
+	state_label.modulate = Color(1.0, 0.83, 0.68)
+	state_label.text = "HP --/--"
+	avatar.add_child(state_label)
 	var label := Label3D.new()
 	label.text = display_name
 	label.position.y = 1.35
@@ -689,6 +730,14 @@ func _create_enemy_avatar(enemy_id: String, display_name: String) -> Node3D:
 	label.modulate = Color(1.0, 0.67, 0.46)
 	avatar.add_child(label)
 	return avatar
+
+
+func _enemy_color(enemy_id: String) -> Color:
+	if enemy_id.contains("jadebound-sentinel"):
+		return Color(0.45, 0.82, 0.72)
+	if enemy_id.contains("rift-stalker"):
+		return Color(0.72, 0.38, 0.96)
+	return Color(0.96, 0.36, 0.16)
 
 
 func _update_remote_avatars(snapshot: Dictionary) -> void:

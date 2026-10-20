@@ -68,7 +68,7 @@ tools/      Content validation and balance utilities
 
 Implemented and locally verified: transactional PostgreSQL migrations; account/session/refresh flows; faction-bound character creation and single-use join tickets; Colyseus room admission; server-authoritative 20 Hz movement and position/map persistence; two-client presence and remote avatars; server-owned zone boundaries, collision footprints, gate-validated transitions, and per-map snapshot isolation. Phase 15 adds server-authoritative basic melee combat with strict target-only intents, same-map/enemy-faction/PvP-zone/range/health/cooldown validation, server-applied damage, combat result events, and Godot F-key attack input. Combat unit tests and protocol schema tests cover protected zones, cross-zone attempts, faction restrictions, range, cooldown and damage clamping.
 
-This remains an early vertical slice, not a complete MMORPG. Combat values are provisional; ability systems, PvE enemy AI, persistent combat health/death/respawn, line-of-sight, combat animations, load testing, GUI playtesting, export validation and production security/release review remain open. Local tests use disposable PostgreSQL only; no production deployment or database was changed. See the implementation roadmap for verification evidence and remaining gates.
+This remains an early vertical slice, not a complete MMORPG. Combat values are provisional; line-of-sight, final combat animations/VFX, load testing, GUI playtesting, export validation and production security/release review remain open. Local tests use disposable PostgreSQL only; no production deployment or database was changed. See the implementation roadmap for verification evidence and remaining gates.
 
 ## Phase 16: class abilities and PvE foundation
 
@@ -77,3 +77,10 @@ This remains an early vertical slice, not a complete MMORPG. Combat values are p
 - Vanguard: Jade Strike / Iron Breaker. Mystic: Astral Bolt / Starfall. Spirit Warden: Spirit Mend / Resonant Pulse. Spirit is server-owned, regenerates over time and is persisted with character health.
 - Defeat triggers a five-second respawn at the character's faction sanctuary. Equipment is retained. Abilities, PvE damage, death and respawn are server-authoritative.
 - Ability values are provisional; see `docs/architecture/SYSTEM_ARCHITECTURE.md` and `docs/production/IMPLEMENTATION_ROADMAP.md` for the implementation and verification record.
+
+## Phase 17: enemy variety and combat feedback
+
+- Ashen Frontier now has three server-owned enemy archetypes: ranged Ashen Wisp, durable heavy-melee Jadebound Sentinel, and fast quick-melee Rift Stalker. Health, damage, movement, aggro/leash ranges, attack range, telegraph time, cooldown and respawn delay are data-driven and provisional.
+- Enemy AI snapshots expose `idle`, `approach`, `telegraph`, `recover` and `dead` states, the current target, attack style and server-time telegraph deadline. The server waits for the telegraph before applying damage and cancels it if the target leaves attack range.
+- Godot uses distinct enemy colours, health labels and a pulsing warning ring plus WIND-UP text during telegraphs. These are blockout cues, not final animation/VFX.
+- Tests cover archetype variety, nearest-target acquisition, map isolation, leash behaviour, telegraph cancellation/timing, attack cooldown, and archetype-specific respawn.

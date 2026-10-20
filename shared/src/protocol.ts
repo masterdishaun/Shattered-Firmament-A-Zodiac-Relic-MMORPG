@@ -106,6 +106,11 @@ export interface WorldEnemySnapshot {
   position: { x: number; y: number };
   health: number;
   maxHealth: number;
+  archetype: "ashen-wisp" | "jadebound-sentinel" | "rift-stalker";
+  attackStyle: "ranged" | "heavy-melee" | "quick-melee";
+  aiState: "idle" | "approach" | "telegraph" | "recover" | "dead";
+  telegraphEndsAtMs: number;
+  targetCharacterId: string;
 }
 export interface WorldSnapshotEnvelope {
   type: "S2C_WorldSnapshot";

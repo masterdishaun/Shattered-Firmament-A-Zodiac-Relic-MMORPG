@@ -214,4 +214,12 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Remaining: richer enemy roster/AI states, line-of-sight, ability animations/VFX, persistent cooldowns across server restart, combat telemetry/load testing, balance pass and GUI playtest. All combat tuning remains provisional.
 
 
-Deployment gate: before any future server release, apply and verify the additive `0002_character_mana.sql` migration through the normal migration runner. Phase 16 has not been deployed to production.
+## Progress log - Phase 17 enemy variety and combat feedback
+
+- Replaced the single-enemy tuning block with a data-driven roster: ranged Ashen Wisp, durable Jadebound Sentinel and fast Rift Stalker. All three are server-owned spawns in the Ashen Frontier; archetype-specific health, damage, ranges, movement, telegraph timing, cooldown and respawn delay are provisional.
+- Added explicit `idle`, `approach`, `telegraph`, `recover` and `dead` AI states. The server exposes the target and telegraph deadline in the versioned world snapshot, delays damage until the wind-up completes, cancels the wind-up if the target leaves range, and drops targets beyond the leash. Enemy respawn preserves the archetype and spawn ID.
+- Godot blockout now uses archetype colours, enemy health/status labels and a pulsing warning ring with WIND-UP text. These are readable prototype cues, not final animation or VFX.
+- Expanded server unit tests and the two-client smoke assertions for archetype diversity, map isolation, target selection/leash, telegraph timing/cancellation, cooldowns, respawn, snapshot fields and client feedback nodes.
+- Verification: `corepack pnpm build`, `corepack pnpm typecheck` and `corepack pnpm lint` passed. With a fresh disposable PostgreSQL 17 cluster, the full test suite passed (shared schema/content 16/16; server unit and DB integration 64/64). Godot 4.7.2 headless editor scan and `GODOT_PROTOTYPE_SMOKE=PASS` succeeded. The two-client multiplayer smoke reported `GODOT_MULTIPLAYER_SMOKE=PASS`, including the three archetype snapshots, required AI/telegraph fields, client telegraph/health nodes, ability damage/resource cost, PvP validation, death/respawn, persistence and reconnect. The disposable cluster and local API/Colyseus services are stopped and removed after verification. No production database or deployment was touched.
+
+Deployment gate: before any future server release, apply and verify the additive `0002_character_mana.sql` migration through the normal migration runner. Phase 16/17 have not been deployed to production.

@@ -1,6 +1,7 @@
 extends SceneTree
 
-const API_BASE := "http://127.0.0.1:2567"
+var api_base := "http://127.0.0.1:2567"
+var game_url := "ws://127.0.0.1:2568"
 const TEST_PASSWORD := "correct horse battery staple 42"
 
 var panel_a: Control
@@ -17,6 +18,12 @@ func _initialize() -> void:
 
 
 func _run_multiplayer_smoke() -> void:
+	var configured_api := OS.get_environment("SF_TEST_API_BASE")
+	if not configured_api.is_empty():
+		api_base = configured_api
+	var configured_game_url := OS.get_environment("SF_TEST_GAME_URL")
+	if not configured_game_url.is_empty():
+		game_url = configured_game_url
 	var panel_script: Script = load("res://scripts/network_panel.gd")
 	if panel_script == null:
 		_fail("Could not load the online account panel.")
@@ -29,8 +36,10 @@ func _run_multiplayer_smoke() -> void:
 	panel_a.combat_result.connect(_on_panel_a_combat_result)
 	panel_b.combat_result.connect(_on_panel_a_combat_result)
 	await process_frame
-	panel_a.api_url_input.text = API_BASE
-	panel_b.api_url_input.text = API_BASE
+	panel_a.api_url_input.text = api_base
+	panel_b.api_url_input.text = api_base
+	panel_a.game_url_input.text = game_url
+	panel_b.game_url_input.text = game_url
 
 	var suffix := str(Time.get_ticks_usec())
 	var username_a := "multiA" + suffix.right(8)
@@ -187,6 +196,22 @@ func _run_multiplayer_smoke() -> void:
 	if not game_scene.enemy_avatars.has("enemy:ashen-wisp-01"):
 		_fail("The Ashen Wisp did not render from its authoritative enemy snapshot.")
 		return
+	var enemy_snapshots: Array = panel_b.last_world_snapshot.get("enemies", [])
+	if enemy_snapshots.size() != 3:
+		_fail("The world snapshot did not contain all three server-owned enemy archetypes.")
+		return
+	for enemy_state in enemy_snapshots:
+		if not enemy_state.has("archetype") or not enemy_state.has("aiState") or not enemy_state.has("attackStyle") or not enemy_state.has("telegraphEndsAtMs"):
+			_fail("Enemy snapshot omitted AI or attack telegraph state.")
+			return
+		var enemy_id := String(enemy_state.get("id", ""))
+		if not game_scene.enemy_avatars.has(enemy_id):
+			_fail("A server-owned enemy archetype did not render in the Godot client.")
+			return
+		var enemy_avatar: Node3D = game_scene.enemy_avatars[enemy_id]
+		if enemy_avatar.get_node_or_null("AttackTelegraph") == null or enemy_avatar.get_node_or_null("EnemyStatus") == null:
+			_fail("Enemy avatar is missing its telegraph or health feedback.")
+			return
 	var remote_avatar: Node3D = game_scene.remote_avatars[character_b_id]
 	if remote_avatar.get_child_count() < 2:
 		_fail("The remote avatar is missing its mesh or name label.")

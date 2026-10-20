@@ -79,7 +79,12 @@
               "mapId",
               "position",
               "health",
-              "maxHealth"
+              "maxHealth",
+              "archetype",
+              "attackStyle",
+              "aiState",
+              "telegraphEndsAtMs",
+              "targetCharacterId"
             ],
             "properties": {
               "id": { "type": "string", "minLength": 1, "maxLength": 80 },
@@ -98,7 +103,21 @@
                 }
               },
               "health": { "type": "integer", "minimum": 0 },
-              "maxHealth": { "type": "integer", "minimum": 1 }
+              "maxHealth": { "type": "integer", "minimum": 1 },
+              "archetype": {
+                "type": "string",
+                "enum": ["ashen-wisp", "jadebound-sentinel", "rift-stalker"]
+              },
+              "attackStyle": {
+                "type": "string",
+                "enum": ["ranged", "heavy-melee", "quick-melee"]
+              },
+              "aiState": {
+                "type": "string",
+                "enum": ["idle", "approach", "telegraph", "recover", "dead"]
+              },
+              "telegraphEndsAtMs": { "type": "integer", "minimum": 0 },
+              "targetCharacterId": { "type": "string", "maxLength": 80 }
             }
           }
         }

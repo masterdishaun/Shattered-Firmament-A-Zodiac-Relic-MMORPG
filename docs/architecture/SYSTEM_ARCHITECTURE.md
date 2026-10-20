@@ -139,7 +139,14 @@ PostgreSQL character leases distinguish active connections from disconnected ses
 - The world room resolves the target from authenticated active character state and applies fixed basic-attack damage on the server. Current provisional tuning: 2.5 planar units, 20 damage, one-second attack cooldown, and a 100 ms intent rate limit.
 - Attacks require a living attacker and target, the same map, an enabled non-safe PvP zone, an opposing faction, and melee range. Protected starts and Wayfarer Crossroads reject attacks; zone boundaries prevent cross-map attacks.
 - Accepted combat results are sent to clients currently in the same map. Rejections are returned to the attacker. World snapshots remain the authoritative health replication path.
-- This is a combat foundation, not a complete combat system: no ability system, PvE enemy AI, death/respawn, persistent combat health, animation, line-of-sight, or balance pass is claimed. Damage values are provisional.
+- This Phase 15 foundation was extended in Phases 16-17 with server-authoritative class abilities, PvE enemy AI, persistent combat health, death/respawn, and enemy telegraph feedback. Line-of-sight, final animation/VFX, tuning, telemetry/load testing and GUI playtesting remain open. Damage values are provisional.
+
+## Enemy variety and combat feedback (Phase 17)
+
+- `ENEMY_DEFINITIONS` is the provisional data-driven roster for Ashen Wisp (ranged), Jadebound Sentinel (heavy melee) and Rift Stalker (quick melee). Each definition controls health, damage, aggro/leash range, attack range, movement speed, telegraph duration, attack cooldown and respawn delay. The Ashen Frontier currently spawns one of each.
+- Server AI transitions through `idle`, `approach`, `telegraph`, `recover` and `dead`. Attacks do not deal damage until the server telegraph deadline expires; leaving attack range cancels the wind-up. Targets must be living and in the same map, and enemies drop targets beyond their leash.
+- `WorldEnemySnapshot` includes archetype, attack style, AI state, telegraph deadline and target ID. The Godot blockout differentiates enemy silhouettes by colour and renders health/status labels and a pulsing ring while a telegraph is active. Client cues are presentation-only; the server remains authoritative.
+- Combat numbers and timings are provisional. Line-of-sight, final animation/VFX, tuning and GUI playtesting remain open.
 
 ## Class abilities, PvE and respawn (Phase 16)
 
