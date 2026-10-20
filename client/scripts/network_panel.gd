@@ -21,6 +21,7 @@ var pending_room_options: Dictionary = {}
 var dungeon_connected := false
 var dungeon_instance_id := ""
 var pending_dungeon_id := ""
+var dungeon_run_key := ""
 var dungeon_encounter_id := ""
 var dungeon_encounter_health := 0
 var dungeon_encounter_max_health := 0
@@ -349,7 +350,7 @@ func _enter_faction_dungeon() -> void:
 	if dungeon_id.is_empty():
 		_set_status("This character has no mapped faction story dungeon yet.")
 		return
-	var run_key := "godot-%s-%s" % [character_id, str(Time.get_ticks_usec())]
+	dungeon_run_key = "godot-%s-%s" % [character_id, str(Time.get_ticks_usec())]
 	_disconnect_game_client()
 	pending_room_name = "dungeon"
 	pending_room_options = {"instanceId": ""}
@@ -358,7 +359,7 @@ func _enter_faction_dungeon() -> void:
 		"enter_dungeon",
 		HTTPClient.METHOD_POST,
 		"/v1/characters/%s/dungeons/%s/enter" % [character_id, dungeon_id.uri_encode()],
-		{"runKey": run_key},
+		{"runKey": dungeon_run_key},
 		true
 	)
 
@@ -502,7 +503,7 @@ func _on_request_completed(
 				]
 			)
 			_connect_to_world()
-		"enter_dungeon":
+		"enter_dungeon", "reconnect_dungeon_ticket":
 			if not data is Dictionary or not data.get("room", {}) is Dictionary:
 				_set_status("The API did not return dungeon admission details.")
 				return
@@ -517,8 +518,10 @@ func _on_request_completed(
 			dungeon_instance_id = String(instance.get("instanceId", ""))
 			dungeon_encounter_id = ""
 			dungeon_connected = false
-			reconnect_enabled = false
-			_set_status("Dungeon run created. Connecting to the authoritative encounter room...")
+			reconnect_enabled = true
+			reconnect_in_progress = false
+			reconnect_attempts = 0
+			_set_status("Dungeon run ready. Connecting to the authoritative encounter room...")
 			_connect_to_world()
 		"logout":
 			_clear_session()
@@ -584,6 +587,8 @@ func _on_room_message(message_type: Variant, data: Variant) -> void:
 	if message_name == "S2C_DungeonJoined":
 		dungeon_connected = true
 		world_connected = false
+		reconnect_in_progress = false
+		reconnect_attempts = 0
 		dungeon_instance_id = String(payload.get("instanceId", dungeon_instance_id))
 		_set_status("Dungeon entered. Press G to attack the encounter; the server controls damage and rewards.")
 		return
@@ -761,7 +766,8 @@ func _schedule_reconnect(reason: String) -> void:
 	var delay_seconds := minf(pow(2.0, float(reconnect_attempts)), 15.0)
 	reconnect_attempts += 1
 	reconnect_timer.start(delay_seconds)
-	_set_status("World connection lost (%s). Reconnecting in %.0f second(s), attempt %d/%d..." % [reason, delay_seconds, reconnect_attempts, MAX_RECONNECT_ATTEMPTS])
+	var connection_label := "dungeon" if pending_room_name == "dungeon" else "world"
+	_set_status("%s connection lost (%s). Reconnecting in %.0f second(s), attempt %d/%d..." % [connection_label, reason, delay_seconds, reconnect_attempts, MAX_RECONNECT_ATTEMPTS])
 
 
 func _on_reconnect_timer_timeout() -> void:
@@ -779,13 +785,22 @@ func _request_reconnect_ticket() -> void:
 		reconnect_enabled = false
 		return
 	reconnect_in_progress = true
-	_send_request(
-		"reconnect_ticket",
-		HTTPClient.METHOD_POST,
-		"/v1/characters/%s/select" % selected_character_id,
-		null,
-		true
-	)
+	if pending_room_name == "dungeon" and not pending_dungeon_id.is_empty() and not dungeon_run_key.is_empty():
+		_send_request(
+			"reconnect_dungeon_ticket",
+			HTTPClient.METHOD_POST,
+			"/v1/characters/%s/dungeons/%s/enter" % [selected_character_id, pending_dungeon_id.uri_encode()],
+			{"runKey": dungeon_run_key},
+			true
+		)
+	else:
+		_send_request(
+			"reconnect_ticket",
+			HTTPClient.METHOD_POST,
+			"/v1/characters/%s/select" % selected_character_id,
+			null,
+			true
+		)
 	if not request_in_flight:
 		reconnect_in_progress = false
 		_schedule_reconnect("could not start ticket request")

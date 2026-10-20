@@ -1,4 +1,4 @@
-extends SceneTree
+﻿extends SceneTree
 
 var api_base := "http://127.0.0.1:2567"
 var game_url := "ws://127.0.0.1:2568"
@@ -388,6 +388,7 @@ func _run_multiplayer_smoke() -> void:
 		return
 	var dungeon_health := -1
 	var dungeon_completed := false
+	var dungeon_instance_before_reconnect: String = String(panel_a.dungeon_instance_id)
 	for _attack_index in range(24):
 		panel_a.send_dungeon_attack()
 		var attack_deadline_ms := Time.get_ticks_msec() + 5_000
@@ -404,6 +405,23 @@ func _run_multiplayer_smoke() -> void:
 		if dungeon_health <= 0:
 			_fail("Dungeon combat did not return server-owned boss health: %s" % panel_a.status_label.text)
 			return
+		if _attack_index == 1:
+			var dungeon_socket: WebSocketPeer = panel_a.game_client.get("_socket")
+			if dungeon_socket == null:
+				_fail("Dungeon socket unavailable for reconnect test.")
+				return
+			dungeon_socket.close(1000, "simulated dungeon network interruption")
+			panel_a.dungeon_connected = false
+			var dungeon_reconnected := false
+			var dungeon_reconnect_deadline := Time.get_ticks_msec() + 30_000
+			while Time.get_ticks_msec() < dungeon_reconnect_deadline:
+				if panel_a.dungeon_connected and panel_a.dungeon_instance_id == dungeon_instance_before_reconnect:
+					dungeon_reconnected = true
+					break
+				await create_timer(0.1).timeout
+			if not dungeon_reconnected:
+				_fail("Dungeon client did not resume the same persisted run after disconnect: %s" % panel_a.status_label.text)
+				return
 		await create_timer(1.0).timeout
 	if not dungeon_completed:
 		_fail("The faction dungeon did not settle a completion reward: %s; health=%d" % [panel_a.status_label.text, panel_a.dungeon_encounter_health])
@@ -596,3 +614,4 @@ func _fail(message: String) -> void:
 	if game_scene != null:
 		game_scene.queue_free()
 	quit(1)
+
