@@ -75,5 +75,18 @@
         "maximum": 12
       }
     }
-  ]
+  ],
+  "experienceCurve": {
+    "baseXp": 4000,
+    "perLevelXp": 60,
+    "totalXpToCap": 693000
+  },
+  "statBudget": {
+    "offensePercent": 45,
+    "survivabilityPercent": 30,
+    "roleExpressionPercent": 15,
+    "utilityPercent": 10,
+    "maxRoleShiftPoints": 10,
+    "sameTierContributionVariancePercent": 5
+  }
 }
