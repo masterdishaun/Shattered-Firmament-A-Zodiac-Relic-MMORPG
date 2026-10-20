@@ -27,6 +27,25 @@ func _run() -> void:
 	assert(ui.find_child("MuteButton", true, false) != null, "Mute toggle must exist")
 	assert(ui.find_child("AccountButton", true, false) != null, "Account control must exist")
 	assert(ui.find_child("ExistingCharacterSelect", true, false) != null, "Existing character selector must exist")
+	assert(ui.find_child("MasterVolumeSlider", true, false) != null, "Master volume slider must exist")
+	assert(ui.find_child("FullscreenToggle", true, false) != null, "Fullscreen toggle must exist")
+
+	var preview_root := ui.get("preview_root") as Node3D
+	var initial_rotation := preview_root.rotation.y
+	var mouse_press := InputEventMouseButton.new()
+	mouse_press.button_index = MOUSE_BUTTON_LEFT
+	mouse_press.pressed = true
+	ui.call("_on_preview_gui_input", mouse_press)
+	var mouse_motion := InputEventMouseMotion.new()
+	mouse_motion.relative = Vector2(24, 0)
+	ui.call("_on_preview_gui_input", mouse_motion)
+	assert(not is_equal_approx(preview_root.rotation.y, initial_rotation), "Preview should rotate from horizontal drag input")
+	var mouse_release := InputEventMouseButton.new()
+	mouse_release.button_index = MOUSE_BUTTON_LEFT
+	mouse_release.pressed = false
+	ui.call("_on_preview_gui_input", mouse_release)
+	ui.call("_select_class", 1)
+	assert(bool((ui.get("preview_offhand_weapon") as MeshInstance3D).visible), "Blade Dancer preview must show the offhand blade")
 
 	var original_class := int(ui.get("selected_class_index"))
 	ui.call("_select_faction", 1)

@@ -13,7 +13,7 @@ Deliver a cinematic character-selection and creation surface for Shattered Firma
 - **Sovereign Sect:** jade green, ivory, and antique gold; White Jade Bastion.
 - **Ashen Syndicate:** obsidian, crimson, and neon violet; Cinderwake.
 - **Astral Concord:** midnight blue, silver, and celestial cyan; Luminous Veil.
-- **Audio:** global mute toggle and settings entry point.
+- **Audio:** global mute toggle, master-volume slider, and fullscreen settings.
 
 ## Character choice invariants
 
@@ -28,11 +28,11 @@ Deliver a cinematic character-selection and creation surface for Shattered Firma
 
 - Default, hover, selected, and pressed states are visible on faction/class cards and primary action.
 - Selecting a faction updates faction copy, accent colors, preview orbit, and CTA theme only.
-- Selecting a class updates the selected card, class description, and preview weapon only.
+- Selecting a class updates the selected card, class description, and class-specific preview weapon(s).
 - Body presentation and body type update preview proportions independently.
 - Invalid short names are rejected locally with visible feedback.
 - The main scene routes the structured selection payload through the existing authenticated character API. Successful creation selects the returned character ID, requests a one-time join ticket, and joins the authoritative world room. Existing characters can be selected from the account roster.
-- Global mute is a real Master bus mute toggle. Settings is an explicit local-prototype dialog until full settings persistence is implemented.
+- Global mute is a real Master bus mute toggle. Master volume, mute, and fullscreen preferences persist locally through `ConfigFile` in `user://`; these are client settings, not account settings.
 
 ## Acceptance for this UI foundation
 

@@ -28,6 +28,7 @@ const FACTIONS: Array[Dictionary] = [
 ]
 
 const CLASS_FILE := "res://../shared/fixtures/character-archetypes.json"
+const SETTINGS_FILE := "user://shattered_firmament_settings.cfg"
 const BASE_SURFACE := Color("#10151f")
 const TEXT_PRIMARY := Color("#f1f0e8")
 const TEXT_MUTED := Color("#a5b0c1")
@@ -53,6 +54,9 @@ var selected_existing_character_id := ""
 var body_presentation: OptionButton
 var body_type: OptionButton
 var preview_root: Node3D
+var preview_viewport_container: SubViewportContainer
+var preview_offhand_weapon: MeshInstance3D
+var preview_dragging := false
 var preview_material: StandardMaterial3D
 var preview_weapon: MeshInstance3D
 var preview_head: MeshInstance3D
@@ -63,6 +67,10 @@ var preview_status: Label
 var create_button: Button
 var mute_button: Button
 var settings_dialog: AcceptDialog
+var master_volume_slider: HSlider
+var fullscreen_toggle: CheckButton
+var settings_config := ConfigFile.new()
+var loading_local_settings := false
 var master_muted := false
 var previous_master_volume := 0.8
 
@@ -71,6 +79,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_load_class_catalog()
 	_build_screen()
+	_load_local_settings()
 	_apply_faction_theme()
 	_select_class(0)
 	_update_preview()
@@ -192,8 +201,29 @@ func _build_screen() -> void:
 	footer_row.add_child(create_button)
 
 	settings_dialog = AcceptDialog.new()
+	settings_dialog.name = "SettingsDialog"
 	settings_dialog.title = "FIRMAMENT SETTINGS"
-	settings_dialog.dialog_text = "Settings are local to this client prototype."
+	settings_dialog.dialog_text = "Audio and display preferences are saved on this device."
+	var settings_content := VBoxContainer.new()
+	settings_content.name = "SettingsContent"
+	settings_content.add_theme_constant_override("separation", 12)
+	settings_dialog.add_child(settings_content)
+	var volume_label := _label("MASTER VOLUME", 10, TEXT_MUTED, true)
+	settings_content.add_child(volume_label)
+	master_volume_slider = HSlider.new()
+	master_volume_slider.name = "MasterVolumeSlider"
+	master_volume_slider.min_value = 0.0
+	master_volume_slider.max_value = 1.0
+	master_volume_slider.step = 0.05
+	master_volume_slider.value = 0.8
+	master_volume_slider.custom_minimum_size.x = 320
+	master_volume_slider.value_changed.connect(_on_master_volume_changed)
+	settings_content.add_child(master_volume_slider)
+	fullscreen_toggle = CheckButton.new()
+	fullscreen_toggle.name = "FullscreenToggle"
+	fullscreen_toggle.text = "Fullscreen"
+	fullscreen_toggle.toggled.connect(_on_fullscreen_toggled)
+	settings_content.add_child(fullscreen_toggle)
 	add_child(settings_dialog)
 
 
@@ -259,6 +289,9 @@ func _build_character_preview(parent: HBoxContainer) -> void:
 	preview_frame.add_child(preview_layout)
 	var viewport_container := SubViewportContainer.new()
 	viewport_container.name = "CharacterViewportContainer"
+	viewport_container.mouse_filter = Control.MOUSE_FILTER_STOP
+	viewport_container.gui_input.connect(_on_preview_gui_input)
+	preview_viewport_container = viewport_container
 	viewport_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	viewport_container.stretch = true
 	preview_layout.add_child(viewport_container)
@@ -438,6 +471,14 @@ func _build_preview_avatar() -> void:
 	weapon_material.roughness = 0.2
 	preview_weapon.material_override = weapon_material
 	preview_root.add_child(preview_weapon)
+	preview_offhand_weapon = MeshInstance3D.new()
+	preview_offhand_weapon.name = "OffhandWeapon"
+	preview_offhand_weapon.mesh = weapon_mesh
+	preview_offhand_weapon.position = Vector3(-0.72, 1.0, 0.02)
+	preview_offhand_weapon.rotation.z = 0.22
+	preview_offhand_weapon.material_override = weapon_material
+	preview_offhand_weapon.visible = false
+	preview_root.add_child(preview_offhand_weapon)
 
 
 func _build_class_column(parent: HBoxContainer) -> void:
@@ -627,6 +668,15 @@ func _update_preview() -> void:
 			weapon_material.emission_enabled = class_id in ["mystic", "support", "storm_caller"]
 			weapon_material.emission = faction["accent"]
 			weapon_material.emission_energy_multiplier = 0.6
+		if preview_offhand_weapon != null:
+			preview_offhand_weapon.mesh = weapon_mesh
+			preview_offhand_weapon.visible = class_id == "blade_dancer"
+			var offhand_material := preview_offhand_weapon.material_override as StandardMaterial3D
+			if offhand_material != null and weapon_material != null:
+				offhand_material.albedo_color = weapon_material.albedo_color
+				offhand_material.emission_enabled = weapon_material.emission_enabled
+				offhand_material.emission = weapon_material.emission
+				offhand_material.emission_energy_multiplier = weapon_material.emission_energy_multiplier
 
 
 
@@ -713,6 +763,61 @@ func _submit_character() -> void:
 	create_requested.emit(payload)
 
 
+func _on_preview_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		preview_dragging = event.pressed
+		if preview_viewport_container != null:
+			preview_viewport_container.accept_event()
+	elif event is InputEventMouseMotion and preview_dragging:
+		if preview_root != null:
+			preview_root.rotation.y += event.relative.x * 0.012
+		if preview_viewport_container != null:
+			preview_viewport_container.accept_event()
+
+
+func _load_local_settings() -> void:
+	loading_local_settings = true
+	settings_config = ConfigFile.new()
+	settings_config.load(SETTINGS_FILE)
+	var saved_volume := clampf(float(settings_config.get_value("audio", "master_volume", 0.8)), 0.0, 1.0)
+	master_muted = bool(settings_config.get_value("audio", "muted", false))
+	var fullscreen := bool(settings_config.get_value("display", "fullscreen", false))
+	master_volume_slider.value = saved_volume
+	fullscreen_toggle.button_pressed = fullscreen
+	var master_bus := AudioServer.get_bus_index("Master")
+	if master_bus >= 0:
+		AudioServer.set_bus_volume_db(master_bus, linear_to_db(saved_volume) if saved_volume > 0.001 else -80.0)
+		AudioServer.set_bus_mute(master_bus, master_muted)
+	mute_button.text = "SOUND: OFF" if master_muted else "SOUND: ON"
+	if DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
+	loading_local_settings = false
+
+
+func _on_master_volume_changed(value: float) -> void:
+	if loading_local_settings:
+		return
+	var master_bus := AudioServer.get_bus_index("Master")
+	if master_bus >= 0:
+		AudioServer.set_bus_volume_db(master_bus, linear_to_db(value) if value > 0.001 else -80.0)
+	_save_local_settings()
+
+
+func _on_fullscreen_toggled(enabled: bool) -> void:
+	if loading_local_settings:
+		return
+	if DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if enabled else DisplayServer.WINDOW_MODE_WINDOWED)
+	_save_local_settings()
+
+
+func _save_local_settings() -> void:
+	settings_config.set_value("audio", "master_volume", master_volume_slider.value)
+	settings_config.set_value("audio", "muted", master_muted)
+	settings_config.set_value("display", "fullscreen", fullscreen_toggle.button_pressed)
+	settings_config.save(SETTINGS_FILE)
+
+
 func _toggle_mute() -> void:
 	var master_bus := AudioServer.get_bus_index("Master")
 	if master_bus >= 0:
@@ -720,11 +825,12 @@ func _toggle_mute() -> void:
 		AudioServer.set_bus_mute(master_bus, master_muted)
 		mute_button.text = "SOUND: OFF" if master_muted else "SOUND: ON"
 		preview_status.text = "Master audio muted." if master_muted else "Master audio restored."
+		_save_local_settings()
 
 
 func _open_settings() -> void:
 	settings_opened.emit()
-	settings_dialog.popup_centered(Vector2i(480, 220))
+	settings_dialog.popup_centered(Vector2i(520, 320))
 
 
 func _panel(background: Color, border: Color, border_width: int) -> PanelContainer:
