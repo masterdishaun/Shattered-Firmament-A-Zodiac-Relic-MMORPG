@@ -1,0 +1,21 @@
+{
+  "manifestId": "world.streaming-proof",
+  "revision": 1,
+  "status": "prototype",
+  "sectorSize": 32.0,
+  "streamingRadius": 1,
+  "unloadRadius": 2,
+  "sectorScene": "res://scenes/world/sectors/streaming_sector.tscn",
+  "spawnAnchors": {
+    "streaming_proof_start": { "position": [0.0, 0.85, 0.0], "facing": 0.0 }
+  },
+  "sectors": [
+    { "id": "proof-sector-west-3", "gridX": -3 },
+    { "id": "proof-sector-west-2", "gridX": -2 },
+    { "id": "proof-sector-west-1", "gridX": -1 },
+    { "id": "proof-sector-central", "gridX": 0 },
+    { "id": "proof-sector-east-1", "gridX": 1 },
+    { "id": "proof-sector-east-2", "gridX": 2 },
+    { "id": "proof-sector-east-3", "gridX": 3 }
+  ]
+}

@@ -178,3 +178,17 @@ A region can be called implemented only when all applicable items pass:
 - [ ] Character state, quest progress and rewards survive reconnect/restart as designed.
 - [ ] Streaming/frame-time/memory/network tests pass on target PC profile.
 - [ ] Manual art/navigation review is signed off; placeholders are explicitly labelled.
+
+## Stage 1 prototype implementation (client-only)
+
+A bounded proof is available at client/scenes/world/streaming_prototype.tscn. It is intentionally separate from scenes/main.tscn, so the existing authentication, character selection, Colyseus client and local uncommitted edits are not disturbed.
+
+- client/data/world/streaming-proof-manifest.json declares seven adjacent 32-unit sector positions, a start anchor, streaming radius and unload radius.
+- scripts/world/world_streamer.gd loads the reusable sector scene resource asynchronously, instantiates the nearby three-sector ring, and releases sectors after they leave the unload radius.
+- scripts/world/streaming_sector.gd creates original placeholder terrain, collision, route ribbons and visible sector markers. Adjacent floor collision boxes meet at the sector boundaries.
+- scripts/world/streaming_prototype.gd owns the player, orthographic camera and HUD outside streamed sectors. This prototype deliberately does not connect to the server; it does not claim network-session continuity or server-authoritative region handoff.
+- client/tests/world_streaming_smoke.gd checks the initial sector ring, east/west traversal, unload/reload behaviour and persistent root objects.
+
+Run the smoke test with the project's Godot 4.7.2 console executable: godot --headless --path client --script res://tests/world_streaming_smoke.gd
+
+This is a streaming-mechanics proof using simple generated blockout geometry, not authored final terrain. Before promoting it into the main client, validate collision seams interactively, profile cold-load/frame-time/memory on target PC hardware, and integrate the real network session behind the persistent root. Stage 2 remains required for server-side region/transition semantics and two-client continuity.
