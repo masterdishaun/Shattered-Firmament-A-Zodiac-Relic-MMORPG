@@ -8,7 +8,16 @@ export const ABILITY_RULES = {
 
 export interface AbilityDefinition {
   id: string;
-  classId: "any" | "vanguard" | "mystic" | "support";
+  classId:
+    | "any"
+    | "vanguard"
+    | "blade_dancer"
+    | "spear_saint"
+    | "shadow_adept"
+    | "mystic"
+    | "support"
+    | "storm_caller"
+    | "iron_fist";
   targetKind: "enemy" | "ally";
   range: number;
   cooldownMs: number;
@@ -87,6 +96,106 @@ export const ABILITIES: Record<string, AbilityDefinition> = {
     resourceCost: 25,
     damage: 0,
     healing: 28,
+  },
+  "flowing-edge": {
+    id: "flowing-edge",
+    classId: "blade_dancer",
+    targetKind: "enemy",
+    range: 3,
+    cooldownMs: 1_500,
+    resourceCost: 8,
+    damage: 30,
+    healing: 0,
+  },
+  "eclipse-flurry": {
+    id: "eclipse-flurry",
+    classId: "blade_dancer",
+    targetKind: "enemy",
+    range: 3.5,
+    cooldownMs: 4_000,
+    resourceCost: 25,
+    damage: 48,
+    healing: 0,
+  },
+  "sky-piercer": {
+    id: "sky-piercer",
+    classId: "spear_saint",
+    targetKind: "enemy",
+    range: 4.5,
+    cooldownMs: 1_800,
+    resourceCost: 10,
+    damage: 28,
+    healing: 0,
+  },
+  "dragon-lance": {
+    id: "dragon-lance",
+    classId: "spear_saint",
+    targetKind: "enemy",
+    range: 5.5,
+    cooldownMs: 4_500,
+    resourceCost: 30,
+    damage: 50,
+    healing: 0,
+  },
+  "veil-cut": {
+    id: "veil-cut",
+    classId: "shadow_adept",
+    targetKind: "enemy",
+    range: 2.5,
+    cooldownMs: 1_400,
+    resourceCost: 8,
+    damage: 34,
+    healing: 0,
+  },
+  nightfall: {
+    id: "nightfall",
+    classId: "shadow_adept",
+    targetKind: "enemy",
+    range: 3,
+    cooldownMs: 5_000,
+    resourceCost: 35,
+    damage: 58,
+    healing: 0,
+  },
+  "thunder-lance": {
+    id: "thunder-lance",
+    classId: "storm_caller",
+    targetKind: "enemy",
+    range: 8,
+    cooldownMs: 2_200,
+    resourceCost: 15,
+    damage: 24,
+    healing: 0,
+  },
+  "tempest-ring": {
+    id: "tempest-ring",
+    classId: "storm_caller",
+    targetKind: "enemy",
+    range: 6,
+    cooldownMs: 4_500,
+    resourceCost: 35,
+    damage: 46,
+    healing: 0,
+  },
+  "rising-palm": {
+    id: "rising-palm",
+    classId: "iron_fist",
+    targetKind: "enemy",
+    range: 2.5,
+    cooldownMs: 1_800,
+    resourceCost: 10,
+    damage: 30,
+    healing: 0,
+  },
+  earthbreaker: {
+    id: "earthbreaker",
+    classId: "iron_fist",
+    targetKind: "enemy",
+    range: 2.5,
+    cooldownMs: 4_500,
+    resourceCost: 30,
+    damage: 50,
+    healing: 0,
   },
 };
 

@@ -27,7 +27,16 @@ const FACTION_START_POSITIONS = {
   ashen_syndicate: { x: 0, y: 4 },
   astral_concord: { x: 22, y: 4 },
 } as const;
-const ARCHETYPE_IDS = ["vanguard", "mystic", "support"] as const;
+const ARCHETYPE_IDS = [
+  "vanguard",
+  "blade_dancer",
+  "spear_saint",
+  "shadow_adept",
+  "mystic",
+  "support",
+  "storm_caller",
+  "iron_fist",
+] as const;
 const FACTION_IDS = [
   "sovereign_sect",
   "ashen_syndicate",

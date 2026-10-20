@@ -48,6 +48,25 @@ func _run_smoke_test() -> void:
 
 	scene._toggle_network_panel()
 	await process_frame
+	if scene.world_streamer == null or scene.world_streamer.get("_player") != scene.player:
+		_fail("The production world root did not attach streaming to the existing persistent player.")
+		return
+	for frame in range(120):
+		await process_frame
+		if scene.world_streamer.get_loaded_sector_count() == 9:
+			break
+	if scene.world_streamer.get_loaded_sector_count() != 9:
+		_fail("The main client did not load the starting sector ring.")
+		return
+	scene.player.global_position = Vector3(64.0, 0.04, 0.0)
+	for frame in range(8):
+		await process_frame
+	if scene.world_streamer.get_loaded_sector_indices() != [1, 2, 3]:
+		_fail("The integrated streamer did not follow the existing main-scene player east.")
+		return
+	scene._move_to_faction_start(0)
+	for frame in range(4):
+		await process_frame
 	if scene.network_panel == null or not scene.network_panel.visible:
 		_fail("The online account panel did not open from the prototype HUD.")
 		return

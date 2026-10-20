@@ -128,7 +128,20 @@ test("character archetypes and item definitions satisfy their schemas", async ()
     "character-archetype",
   );
   const items = await assertValidCollection("items", "item-definition");
-  assert.ok(archetypes.length >= 3);
+  assert.equal(archetypes.length, 8);
+  assert.deepEqual(
+    archetypes.map((entry) => entry.displayName),
+    [
+      "Vanguard",
+      "Blade Dancer",
+      "Spear Saint",
+      "Shadow Adept",
+      "Astral Mystic",
+      "Spirit Warden",
+      "Storm Caller",
+      "Iron Fist",
+    ],
+  );
   assert.ok(items.some((item) => item.cosmeticOnly === true));
   for (const item of items) {
     if (

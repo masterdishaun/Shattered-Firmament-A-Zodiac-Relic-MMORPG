@@ -44,6 +44,7 @@ var prompt_label: Label
 var feedback_label: Label
 var hud_root: Control
 var network_panel: Control
+var character_selection_ui: Control
 var remote_avatars: Dictionary = {}
 var remote_targets: Dictionary = {}
 var enemy_avatars: Dictionary = {}
@@ -60,6 +61,7 @@ var correction_offset := Vector3.ZERO
 var prediction_accumulator := 0.0
 var nearby_relic_index := -1
 var inspected_relics: Dictionary = {}
+var world_streamer: Node
 var hud_refresh_elapsed := 0.0
 
 
@@ -68,9 +70,11 @@ func _ready() -> void:
 	_build_world_floor()
 	_build_faction_zones()
 	_build_player()
+	_build_world_streamer()
 	_build_camera()
 	_build_hud()
 	_move_to_faction_start(0)
+	_show_character_selection()
 
 
 func _process(delta: float) -> void:
@@ -257,12 +261,17 @@ func _request_class_ability(secondary: bool) -> void:
 	var ability_id := ""
 	match current_character_class_id:
 		"vanguard": ability_id = "iron-breaker" if secondary else "jade-strike"
+		"blade_dancer": ability_id = "eclipse-flurry" if secondary else "flowing-edge"
+		"spear_saint": ability_id = "dragon-lance" if secondary else "sky-piercer"
+		"shadow_adept": ability_id = "nightfall" if secondary else "veil-cut"
 		"mystic": ability_id = "starfall" if secondary else "astral-bolt"
 		"support":
 			if not secondary:
 				network_panel.send_ability("spirit-mend", active_character_id)
 				return
 			ability_id = "resonant-pulse"
+		"storm_caller": ability_id = "tempest-ring" if secondary else "thunder-lance"
+		"iron_fist": ability_id = "earthbreaker" if secondary else "rising-palm"
 	var target_id := _nearest_enemy_id(8.0)
 	if target_id.is_empty():
 		feedback_label.text = "No Ashen Wisp in ability range. Explore the Ashen Frontier."
@@ -490,6 +499,26 @@ func _build_player() -> void:
 	player.add_child(blade)
 
 
+
+func _build_world_streamer() -> void:
+	var manifest_path := "res://data/world/streaming-proof-manifest.json"
+	if not FileAccess.file_exists(manifest_path):
+		push_warning("World streaming manifest is missing; retaining the existing blockout world.")
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(manifest_path))
+	if not parsed is Dictionary:
+		push_warning("World streaming manifest is invalid; retaining the existing blockout world.")
+		return
+	var streamer_script: Script = load("res://scripts/world/world_streamer.gd")
+	if streamer_script == null:
+		push_warning("World streamer script is missing; retaining the existing blockout world.")
+		return
+	world_streamer = streamer_script.new()
+	world_streamer.name = "WorldStreamer"
+	world_streamer.configure(parsed, player)
+	add_child(world_streamer)
+
+
 func _build_camera() -> void:
 	camera = Camera3D.new()
 	camera.name = "IsometricCamera"
@@ -578,6 +607,72 @@ func _build_hud() -> void:
 	stack.add_child(feedback_label)
 
 
+func _show_character_selection() -> void:
+	var scene := load("res://scenes/character_selection.tscn") as PackedScene
+	if scene == null:
+		feedback_label.text = "Character selection UI could not be loaded."
+		return
+	character_selection_ui = scene.instantiate() as Control
+	hud_root.add_child(character_selection_ui)
+	character_selection_ui.create_requested.connect(_on_character_create_requested)
+	character_selection_ui.account_requested.connect(_toggle_network_panel)
+	character_selection_ui.enter_existing_requested.connect(_on_enter_existing_character_requested)
+
+
+func _on_character_create_requested(payload: Dictionary) -> void:
+	if network_panel == null:
+		_toggle_network_panel()
+	if network_panel == null:
+		return
+	if String(network_panel.get("access_token")).is_empty():
+		network_panel.visible = true
+		character_selection_ui.call("set_network_status", "Sign in or register through ACCOUNT before forging a character.")
+		return
+	if bool(network_panel.get("request_in_flight")):
+		character_selection_ui.call("set_network_status", "Wait for the current account request to finish.")
+		return
+	var character_name_field := network_panel.get("character_name_input") as LineEdit
+	var class_select_field := network_panel.get("class_select") as OptionButton
+	var faction_select_field := network_panel.get("faction_select") as OptionButton
+	if character_name_field == null or class_select_field == null or faction_select_field == null:
+		character_selection_ui.call("set_network_status", "Character creation controls are unavailable.")
+		return
+	character_name_field.text = String(payload.get("name", ""))
+	var class_id := String(payload.get("classId", ""))
+	for i in range(class_select_field.item_count):
+		if String(class_select_field.get_item_metadata(i)) == class_id:
+			class_select_field.select(i)
+			break
+	var faction_id := String(payload.get("factionId", ""))
+	for i in range(faction_select_field.item_count):
+		if String(faction_select_field.get_item_metadata(i)) == faction_id:
+			faction_select_field.select(i)
+			break
+	network_panel.set("preferred_character_id", "")
+	network_panel.set("auto_join_after_create", true)
+	network_panel.call("_create_character")
+
+
+func _on_enter_existing_character_requested(character_id: String) -> void:
+	if network_panel == null:
+		_toggle_network_panel()
+	if network_panel == null:
+		return
+	if String(network_panel.get("access_token")).is_empty():
+		network_panel.visible = true
+		character_selection_ui.call("set_network_status", "Sign in through ACCOUNT to enter an existing character.")
+		return
+	var character_select_field := network_panel.get("character_select") as OptionButton
+	if character_select_field == null:
+		character_selection_ui.call("set_network_status", "Character roster is unavailable.")
+		return
+	for i in range(character_select_field.item_count):
+		if String(character_select_field.get_item_metadata(i)) == character_id:
+			character_select_field.select(i)
+			network_panel.call("_request_join_ticket")
+			return
+	character_selection_ui.call("set_network_status", "Refresh the account roster and try again.")
+
 func _toggle_network_panel() -> void:
 	if network_panel == null:
 		var panel_script: Script = load("res://scripts/network_panel.gd")
@@ -595,6 +690,9 @@ func _toggle_network_panel() -> void:
 		network_panel.reward_granted.connect(_on_reward_granted)
 		network_panel.zone_changed.connect(_on_zone_changed)
 		network_panel.close_requested.connect(_close_network_panel)
+		if character_selection_ui != null:
+			network_panel.characters_loaded.connect(Callable(character_selection_ui, "_on_characters_loaded"))
+			network_panel.status_changed.connect(Callable(character_selection_ui, "set_network_status"))
 	network_panel.visible = not network_panel.visible
 
 
@@ -604,6 +702,10 @@ func _close_network_panel() -> void:
 
 
 func _on_world_joined(character: Dictionary) -> void:
+	if character_selection_ui != null:
+		character_selection_ui.visible = false
+	if network_panel != null:
+		network_panel.visible = false
 	_clear_remote_avatars()
 	active_character_id = String(character.get("characterId", active_character_id))
 	var position: Dictionary = character.get("position", {})
@@ -855,6 +957,8 @@ func _clear_remote_avatars() -> void:
 
 func _on_network_status_changed(message: String) -> void:
 	feedback_label.text = message
+	if message.begins_with("Signed in as") and network_panel != null:
+		network_panel.visible = false
 	if network_panel != null and not network_panel.world_connected:
 		_clear_remote_avatars()
 

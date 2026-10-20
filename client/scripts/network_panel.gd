@@ -1,6 +1,7 @@
 extends Control
 
 signal status_changed(message: String)
+signal characters_loaded(characters: Array)
 signal character_ticketed(character: Dictionary)
 signal world_joined(character: Dictionary)
 signal world_snapshot(snapshot: Dictionary)
@@ -26,10 +27,13 @@ var movement_sequence := 0
 var last_move_sent_at_ms := 0
 var pending_move_intents: Array[Dictionary] = []
 var selected_character_id := ""
+var preferred_character_id := ""
+var auto_join_after_create := false
 var reconnect_enabled := false
 var reconnect_in_progress := false
 var reconnect_attempts := 0
 const MAX_RECONNECT_ATTEMPTS := 5
+const CHARACTER_ARCHETYPES_FILE := "res://../shared/fixtures/character-archetypes.json"
 var reconnect_timer: Timer
 var intentional_disconnect := false
 
@@ -124,13 +128,9 @@ func _build_panel() -> void:
 	_add_label(stack, "CREATE CHARACTER")
 	character_name_input = _add_input(stack, "Character name")
 	class_select = OptionButton.new()
-	for entry in [
-		{"label": "Vanguard", "id": "vanguard"},
-		{"label": "Mystic", "id": "mystic"},
-		{"label": "Spirit Warden", "id": "support"}
-	]:
-		class_select.add_item(entry["label"])
-		class_select.set_item_metadata(class_select.item_count - 1, entry["id"])
+	for entry in _load_class_options():
+		class_select.add_item(String(entry["label"]))
+		class_select.set_item_metadata(class_select.item_count - 1, String(entry["id"]))
 	stack.add_child(class_select)
 
 	faction_select = OptionButton.new()
@@ -162,6 +162,29 @@ func _build_panel() -> void:
 	status_label.add_theme_color_override("font_color", Color(0.72, 0.84, 0.86))
 	stack.add_child(status_label)
 	_add_button(stack, "Close Panel", func() -> void: close_requested.emit())
+
+
+func _load_class_options() -> Array[Dictionary]:
+	var options: Array[Dictionary] = []
+	var file := FileAccess.open(CHARACTER_ARCHETYPES_FILE, FileAccess.READ)
+	if file != null:
+		var parsed: Variant = JSON.parse_string(file.get_as_text())
+		if parsed is Array:
+			for entry in parsed:
+				if entry is Dictionary and not String(entry.get("id", "")).is_empty():
+					options.append({"label": String(entry.get("displayName", entry["id"])), "id": String(entry["id"])})
+	if options.is_empty():
+		options = [
+			{"label": "Vanguard", "id": "vanguard"},
+			{"label": "Blade Dancer", "id": "blade_dancer"},
+			{"label": "Spear Saint", "id": "spear_saint"},
+			{"label": "Shadow Adept", "id": "shadow_adept"},
+			{"label": "Astral Mystic", "id": "mystic"},
+			{"label": "Spirit Warden", "id": "support"},
+			{"label": "Storm Caller", "id": "storm_caller"},
+			{"label": "Iron Fist", "id": "iron_fist"}
+		]
+	return options
 
 
 func _add_label(parent: VBoxContainer, value: String) -> void:
@@ -325,6 +348,8 @@ func _clear_session() -> void:
 	reconnect_in_progress = false
 	reconnect_attempts = 0
 	selected_character_id = ""
+	preferred_character_id = ""
+	auto_join_after_create = false
 	if reconnect_timer != null:
 		reconnect_timer.stop()
 	_disconnect_game_client()
@@ -345,6 +370,9 @@ func _on_request_completed(
 	pending_action = ""
 	request_in_flight = false
 	if result != HTTPRequest.RESULT_SUCCESS:
+		if action == "create_character":
+			auto_join_after_create = false
+			preferred_character_id = ""
 		if action == "reconnect_ticket":
 			reconnect_in_progress = false
 			_set_status("Reconnect ticket request lost its network response.")
@@ -361,6 +389,9 @@ func _on_request_completed(
 	if body.size() > 0:
 		data = JSON.parse_string(body.get_string_from_utf8())
 	if response_code < 200 or response_code >= 300:
+		if action == "create_character":
+			auto_join_after_create = false
+			preferred_character_id = ""
 		var message := "Request failed with HTTP %d." % response_code
 		if data is Dictionary and data.has("error"):
 			message = String(data["error"].get("message", message))
@@ -407,22 +438,46 @@ func _on_request_completed(
 						character_select.add_item(
 							"%s (Lv %s)" % [String(character.get("name", "Character")), str(character.get("level", 1))]
 						)
-						character_select.set_item_metadata(
-							character_select.item_count - 1,
-							String(character.get("id", ""))
-						)
+						var loaded_id := String(character.get("id", ""))
+						character_select.set_item_metadata(character_select.item_count - 1, loaded_id)
+						if not preferred_character_id.is_empty() and loaded_id == preferred_character_id:
+							character_select.select(character_select.item_count - 1)
+							preferred_character_id = ""
 			if characters.is_empty():
 				_set_status("No characters found. Create one below.")
 			else:
+				if character_select.selected < 0 and character_select.item_count > 0:
+					character_select.select(0)
 				_set_status("Loaded %d character(s) for %s." % [
 					characters.size(),
 					String(current_user.get("username", "player"))
 				])
+			characters_loaded.emit(characters.duplicate(true))
+			if auto_join_after_create:
+				if not preferred_character_id.is_empty():
+					auto_join_after_create = false
+					preferred_character_id = ""
+					_set_status("The created character was not found in the refreshed roster; world entry was cancelled.")
+				else:
+					auto_join_after_create = false
+					if character_select.selected >= 0:
+						_request_join_ticket()
+					else:
+						_set_status("Character was created, but no roster entry could be selected.")
 		"create_character":
 			if data is Dictionary and data.has("character"):
+				var created_character: Dictionary = data.get("character", {})
+				preferred_character_id = String(created_character.get("id", ""))
+				if preferred_character_id.is_empty():
+					auto_join_after_create = false
+					preferred_character_id = ""
+					_set_status("The API created a character but omitted its ID; automatic entry was cancelled.")
+					return
 				_set_status("Character created. Refreshing your character list.")
 				_fetch_characters()
 			else:
+				auto_join_after_create = false
+				preferred_character_id = ""
 				_set_status("The API did not return the created character.")
 		"select_character", "reconnect_ticket":
 			if not data is Dictionary or not data.has("joinTicket"):

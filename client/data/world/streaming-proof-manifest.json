@@ -1,0 +1,266 @@
+{
+    "manifestId":  "world.streaming-proof",
+    "revision":  2,
+    "status":  "prototype",
+    "sectorSize":  32,
+    "streamingRadius":  1,
+    "unloadRadius":  2,
+    "sectorScene":  "res://scenes/world/sectors/streaming_sector.tscn",
+    "spawnAnchors":  {
+                         "streaming_proof_start":  {
+                                                       "position":  [
+                                                                        0,
+                                                                        0.85,
+                                                                        0
+                                                                    ],
+                                                       "facing":  0
+                                                   }
+                     },
+    "sectors":  [
+                    {
+                        "id":  "proof-sector-x-3-z-3",
+                        "gridX":  -3,
+                        "gridZ":  -3
+                    },
+                    {
+                        "id":  "proof-sector-x-2-z-3",
+                        "gridX":  -2,
+                        "gridZ":  -3
+                    },
+                    {
+                        "id":  "proof-sector-x-1-z-3",
+                        "gridX":  -1,
+                        "gridZ":  -3
+                    },
+                    {
+                        "id":  "proof-sector-x0-z-3",
+                        "gridX":  0,
+                        "gridZ":  -3
+                    },
+                    {
+                        "id":  "proof-sector-x+1-z-3",
+                        "gridX":  1,
+                        "gridZ":  -3
+                    },
+                    {
+                        "id":  "proof-sector-x+2-z-3",
+                        "gridX":  2,
+                        "gridZ":  -3
+                    },
+                    {
+                        "id":  "proof-sector-x+3-z-3",
+                        "gridX":  3,
+                        "gridZ":  -3
+                    },
+                    {
+                        "id":  "proof-sector-x-3-z-2",
+                        "gridX":  -3,
+                        "gridZ":  -2
+                    },
+                    {
+                        "id":  "proof-sector-x-2-z-2",
+                        "gridX":  -2,
+                        "gridZ":  -2
+                    },
+                    {
+                        "id":  "proof-sector-x-1-z-2",
+                        "gridX":  -1,
+                        "gridZ":  -2
+                    },
+                    {
+                        "id":  "proof-sector-x0-z-2",
+                        "gridX":  0,
+                        "gridZ":  -2
+                    },
+                    {
+                        "id":  "proof-sector-x+1-z-2",
+                        "gridX":  1,
+                        "gridZ":  -2
+                    },
+                    {
+                        "id":  "proof-sector-x+2-z-2",
+                        "gridX":  2,
+                        "gridZ":  -2
+                    },
+                    {
+                        "id":  "proof-sector-x+3-z-2",
+                        "gridX":  3,
+                        "gridZ":  -2
+                    },
+                    {
+                        "id":  "proof-sector-x-3-z-1",
+                        "gridX":  -3,
+                        "gridZ":  -1
+                    },
+                    {
+                        "id":  "proof-sector-x-2-z-1",
+                        "gridX":  -2,
+                        "gridZ":  -1
+                    },
+                    {
+                        "id":  "proof-sector-x-1-z-1",
+                        "gridX":  -1,
+                        "gridZ":  -1
+                    },
+                    {
+                        "id":  "proof-sector-x0-z-1",
+                        "gridX":  0,
+                        "gridZ":  -1
+                    },
+                    {
+                        "id":  "proof-sector-x+1-z-1",
+                        "gridX":  1,
+                        "gridZ":  -1
+                    },
+                    {
+                        "id":  "proof-sector-x+2-z-1",
+                        "gridX":  2,
+                        "gridZ":  -1
+                    },
+                    {
+                        "id":  "proof-sector-x+3-z-1",
+                        "gridX":  3,
+                        "gridZ":  -1
+                    },
+                    {
+                        "id":  "proof-sector-x-3-z0",
+                        "gridX":  -3,
+                        "gridZ":  0
+                    },
+                    {
+                        "id":  "proof-sector-x-2-z0",
+                        "gridX":  -2,
+                        "gridZ":  0
+                    },
+                    {
+                        "id":  "proof-sector-x-1-z0",
+                        "gridX":  -1,
+                        "gridZ":  0
+                    },
+                    {
+                        "id":  "proof-sector-central",
+                        "gridX":  0,
+                        "gridZ":  0
+                    },
+                    {
+                        "id":  "proof-sector-x+1-z0",
+                        "gridX":  1,
+                        "gridZ":  0
+                    },
+                    {
+                        "id":  "proof-sector-x+2-z0",
+                        "gridX":  2,
+                        "gridZ":  0
+                    },
+                    {
+                        "id":  "proof-sector-x+3-z0",
+                        "gridX":  3,
+                        "gridZ":  0
+                    },
+                    {
+                        "id":  "proof-sector-x-3-z+1",
+                        "gridX":  -3,
+                        "gridZ":  1
+                    },
+                    {
+                        "id":  "proof-sector-x-2-z+1",
+                        "gridX":  -2,
+                        "gridZ":  1
+                    },
+                    {
+                        "id":  "proof-sector-x-1-z+1",
+                        "gridX":  -1,
+                        "gridZ":  1
+                    },
+                    {
+                        "id":  "proof-sector-x0-z+1",
+                        "gridX":  0,
+                        "gridZ":  1
+                    },
+                    {
+                        "id":  "proof-sector-x+1-z+1",
+                        "gridX":  1,
+                        "gridZ":  1
+                    },
+                    {
+                        "id":  "proof-sector-x+2-z+1",
+                        "gridX":  2,
+                        "gridZ":  1
+                    },
+                    {
+                        "id":  "proof-sector-x+3-z+1",
+                        "gridX":  3,
+                        "gridZ":  1
+                    },
+                    {
+                        "id":  "proof-sector-x-3-z+2",
+                        "gridX":  -3,
+                        "gridZ":  2
+                    },
+                    {
+                        "id":  "proof-sector-x-2-z+2",
+                        "gridX":  -2,
+                        "gridZ":  2
+                    },
+                    {
+                        "id":  "proof-sector-x-1-z+2",
+                        "gridX":  -1,
+                        "gridZ":  2
+                    },
+                    {
+                        "id":  "proof-sector-x0-z+2",
+                        "gridX":  0,
+                        "gridZ":  2
+                    },
+                    {
+                        "id":  "proof-sector-x+1-z+2",
+                        "gridX":  1,
+                        "gridZ":  2
+                    },
+                    {
+                        "id":  "proof-sector-x+2-z+2",
+                        "gridX":  2,
+                        "gridZ":  2
+                    },
+                    {
+                        "id":  "proof-sector-x+3-z+2",
+                        "gridX":  3,
+                        "gridZ":  2
+                    },
+                    {
+                        "id":  "proof-sector-x-3-z+3",
+                        "gridX":  -3,
+                        "gridZ":  3
+                    },
+                    {
+                        "id":  "proof-sector-x-2-z+3",
+                        "gridX":  -2,
+                        "gridZ":  3
+                    },
+                    {
+                        "id":  "proof-sector-x-1-z+3",
+                        "gridX":  -1,
+                        "gridZ":  3
+                    },
+                    {
+                        "id":  "proof-sector-x0-z+3",
+                        "gridX":  0,
+                        "gridZ":  3
+                    },
+                    {
+                        "id":  "proof-sector-x+1-z+3",
+                        "gridX":  1,
+                        "gridZ":  3
+                    },
+                    {
+                        "id":  "proof-sector-x+2-z+3",
+                        "gridX":  2,
+                        "gridZ":  3
+                    },
+                    {
+                        "id":  "proof-sector-x+3-z+3",
+                        "gridX":  3,
+                        "gridZ":  3
+                    }
+                ]
+}

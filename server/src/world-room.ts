@@ -75,7 +75,15 @@ interface WorldPlayerRuntime extends PlayerMovementState {
   userId: string;
   sessionId: string;
   characterId: string;
-  classId: "vanguard" | "mystic" | "support";
+  classId:
+    | "vanguard"
+    | "blade_dancer"
+    | "spear_saint"
+    | "shadow_adept"
+    | "mystic"
+    | "support"
+    | "storm_caller"
+    | "iron_fist";
   name: string;
   mapId: string;
   factionId: FactionId;

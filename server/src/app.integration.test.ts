@@ -247,6 +247,41 @@ databaseSuite("authentication and character API integration", () => {
     expect(foreignSelection.statusCode).toBe(404);
   });
 
+  it("accepts all eight approved launch classes during character creation", async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const tokens = await registerAccount(
+      `classes-${suffix}@example.test`,
+      `classes${suffix}`,
+    );
+    const classIds = [
+      "vanguard",
+      "blade_dancer",
+      "spear_saint",
+      "shadow_adept",
+      "mystic",
+      "support",
+      "storm_caller",
+      "iron_fist",
+    ];
+    for (const classId of classIds) {
+      const response = await service.app.inject({
+        method: "POST",
+        url: "/v1/characters",
+        headers: { authorization: `Bearer ${tokens.accessToken}` },
+        payload: {
+          name: `Hero ${classId.replaceAll("_", " ")}`,
+          classId,
+          factionId: "sovereign_sect",
+        },
+      });
+      expect(response.statusCode).toBe(201);
+      expect(response.json().character).toMatchObject({
+        classId,
+        factionId: "sovereign_sect",
+      });
+    }
+  });
+
   it("uses generic login failures and rotates refresh tokens exactly once", async () => {
     const tokens = await registerAccount("login@example.test", "LoginPlayer");
 
