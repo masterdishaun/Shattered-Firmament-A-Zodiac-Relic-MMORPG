@@ -20,6 +20,7 @@ var pending_room_name := "world"
 var pending_room_options: Dictionary = {}
 var dungeon_connected := false
 var dungeon_instance_id := ""
+var pending_dungeon_id := ""
 var dungeon_encounter_id := ""
 var dungeon_encounter_health := 0
 var dungeon_encounter_max_health := 0
@@ -351,7 +352,8 @@ func _enter_faction_dungeon() -> void:
 	var run_key := "godot-%s-%s" % [character_id, str(Time.get_ticks_usec())]
 	_disconnect_game_client()
 	pending_room_name = "dungeon"
-	pending_room_options = {"instanceId": "", "dungeonId": dungeon_id}
+	pending_room_options = {"instanceId": ""}
+	pending_dungeon_id = dungeon_id
 	_send_request(
 		"enter_dungeon",
 		HTTPClient.METHOD_POST,
@@ -578,7 +580,7 @@ func _on_room_joined() -> void:
 func _on_room_message(message_type: Variant, data: Variant) -> void:
 	var message_name := String(message_type)
 	var envelope: Dictionary = data if data is Dictionary else {}
-	var payload: Dictionary = envelope.get("payload", {})
+	var payload: Dictionary = envelope.get("payload", envelope)
 	if message_name == "S2C_DungeonJoined":
 		dungeon_connected = true
 		world_connected = false
@@ -667,7 +669,7 @@ func send_dungeon_attack(encounter_id: String = "") -> void:
 			"dungeon.cinder-vault": "encounter.furnace-saint",
 			"dungeon.drowned-shrine": "encounter.echo-bound-guardian"
 		}
-		target_encounter = String(encounter_by_dungeon.get(String(pending_room_options.get("dungeonId", "")), ""))
+		target_encounter = String(encounter_by_dungeon.get(pending_dungeon_id, ""))
 	if target_encounter.is_empty():
 		_set_status("This dungeon has no configured encounter target.")
 		return
