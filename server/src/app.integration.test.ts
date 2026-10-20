@@ -415,6 +415,57 @@ databaseSuite("authentication and character API integration", () => {
     expect(logout.statusCode).toBe(204);
     expect(await extendCharacterLease(migrationPool, admitted)).toBe(false);
   });
+  it("starts a quest and enters a faction dungeon through authenticated APIs without exposing objective submission", async () => {
+    const tokens = await registerAccount(
+      `runtime-${randomUUID()}@example.test`,
+      `runtime_${randomUUID().replaceAll("-", "").slice(0, 12)}`,
+    );
+    const created = await service.app.inject({
+      method: "POST",
+      url: "/v1/characters",
+      headers: { authorization: `Bearer ${tokens.accessToken}` },
+      payload: {
+        name: `Runtime Hero ${randomUUID().slice(0, 6)}`,
+        classId: "vanguard",
+        factionId: "sovereign_sect",
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const characterId = String(created.json().character.id);
+    const auth = { authorization: `Bearer ${tokens.accessToken}` };
+    const started = await service.app.inject({
+      method: "POST",
+      url: `/v1/characters/${characterId}/quests/sovereign.ward-that-lied/start`,
+      headers: auth,
+    });
+    expect(started.statusCode).toBe(200);
+    expect(started.json().quest.status).toBe("in_progress");
+    const entered = await service.app.inject({
+      method: "POST",
+      url: `/v1/characters/${characterId}/dungeons/dungeon.underterrace-archive/enter`,
+      headers: auth,
+      payload: { runKey: `api-run:${randomUUID()}` },
+    });
+    expect(entered.statusCode).toBe(200);
+    expect(entered.json().instance.status).toBe("active");
+    const progress = await migrationPool.query<{
+      objective_progress: Record<string, number>;
+    }>(
+      "SELECT objective_progress FROM quest_progress WHERE character_id=$1 AND quest_id='sovereign.ward-that-lied' AND content_version=1",
+      [characterId],
+    );
+    expect(
+      progress.rows[0]?.objective_progress["sovereign.ward-that-lied.obj3"],
+    ).toBe(1);
+    const forged = await service.app.inject({
+      method: "POST",
+      url: `/v1/characters/${characterId}/quests/sovereign.ward-that-lied/progress`,
+      headers: auth,
+      payload: { objectiveId: "sovereign.ward-that-lied.obj1", amount: 999 },
+    });
+    expect(forged.statusCode).toBe(404);
+  });
+
   it("claims a completed quest through the authenticated API exactly once", async () => {
     const tokens = await registerAccount(
       `quest-${randomUUID()}@example.test`,

@@ -301,3 +301,19 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Added internal server-side dungeon completion settlement with an explicit completion event key, required encounter validation, faction/level checks, durable completion evidence and atomic reward claims. The client cannot create a dungeon completion event through an HTTP endpoint; the authoritative dungeon runtime must call this service only after it verifies the required encounters.
 - Added migration `0007_dungeon_completion_events.sql` and PostgreSQL integration tests for concurrent quest claim replay, incomplete objectives, faction locks, dungeon replay, event-key reuse and incomplete encounter sets. Local build/typecheck/lint pass; full test suite passes with shared 18/18 and server 87/87 against a fresh disposable PostgreSQL 17 test database.
 - Dungeon reward settlement is ready for the future dungeon runtime, but boss/instance gameplay itself is not yet implemented. No production services or data were touched.
+
+
+### Phase 20 authoritative runtime follow-up (in progress)
+
+- Added migration `0008_authoritative_content_runtime.sql`: idempotent quest-event ledger, persistent dungeon instances, and unique per-instance encounter defeat records.
+- Added authenticated quest start and dungeon-entry APIs. Quest progress changes only through an internal trusted-event function; there is no client endpoint to submit arbitrary objective progress or completion. Objective event mappings are explicit in content metadata, and duplicate event keys are ignored.
+- Added internal dungeon instance admission with character ownership, level/faction access checks, run-key replay handling, per-instance boss health, idempotent server-calculated damage events, encounter tracking, and boss-defeat settlement wired to the existing atomic reward service. A completed instance can retry settlement after a transient reward-service failure without duplicating rewards.
+- Added database integration tests for quest start/progress idempotency and dungeon boss/reward replay, plus migration assertions and content checks for configured event metadata.
+- Remaining release gates: author server-backed triggers for the other narrative objectives; connect the server-owned boss health/damage service to a dedicated Colyseus dungeon room and live combat intents (the current world room only simulates the existing overworld enemy roster); test the complete Godot client-to-server dungeon loop against disposable PostgreSQL; verify reward history/inventory/currency persistence; then review CI and merge only if every gate passes. No production changes.
+
+
+### World-scale and dungeon PvP design decision (2026-10-20)
+
+- Approved design direction is a large persistent open world, with region streaming/spatial interest management used for scale rather than turning ordinary traversal into a sequence of isolated instances.
+- Added `docs/design/OPEN_WORLD_AND_DUNGEON_PVP.md` as the design contract for safe-by-default PvE, opt-in War Mode, a proposed +20% eligible reward incentive, a marked safe-to-contested deep-zone boundary, faction-race instances with bounded indirect sabotage, and counterable tamed dungeon defences.
+- These are design decisions and acceptance criteria, not claims of implemented gameplay. The production sequence is to finish authoritative quest/dungeon foundations, then deliver one polished open-world vertical slice with a safe dungeon before expanding world regions and PvP modes.

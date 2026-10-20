@@ -11,6 +11,13 @@ import {
   ContentRewardError,
 } from "./content-rewards.js";
 import {
+  startQuest,
+  enterDungeonInstance,
+  QuestRuntimeError,
+  DungeonRuntimeError,
+  recordTrustedQuestEvent,
+} from "./content-runtime.js";
+import {
   createOpaqueToken,
   hashOpaqueToken,
   hashPassword,
@@ -485,6 +492,131 @@ export const createApp = (
       return databaseUnavailable(reply);
     }
   });
+
+  app.post<{ Params: { characterId: string; questId: string } }>(
+    "/v1/characters/:characterId/quests/:questId/start",
+    {
+      schema: {
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["characterId", "questId"],
+          properties: {
+            characterId: { type: "string", format: "uuid" },
+            questId: {
+              type: "string",
+              pattern: "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+              maxLength: 160,
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const auth = await authenticateRequest(
+        request,
+        reply,
+        pool,
+        accessTokenSecret,
+      );
+      if (!auth) return;
+      try {
+        return {
+          quest: await startQuest(pool!, {
+            userId: auth.id,
+            characterId: request.params.characterId,
+            questId: request.params.questId,
+          }),
+        };
+      } catch (error) {
+        if (error instanceof QuestRuntimeError) {
+          const status = error.code.endsWith("NOT_FOUND")
+            ? 404
+            : error.code.includes("FACTION")
+              ? 403
+              : 409;
+          return reply
+            .code(status)
+            .send({ error: { code: error.code, message: error.message } });
+        }
+        request.log.error({ err: error }, "Quest start failed");
+        return databaseUnavailable(reply);
+      }
+    },
+  );
+
+  app.post<{
+    Params: { characterId: string; dungeonId: string };
+    Body: { runKey: string };
+  }>(
+    "/v1/characters/:characterId/dungeons/:dungeonId/enter",
+    {
+      schema: {
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["characterId", "dungeonId"],
+          properties: {
+            characterId: { type: "string", format: "uuid" },
+            dungeonId: {
+              type: "string",
+              pattern: "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+              maxLength: 160,
+            },
+          },
+        },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["runKey"],
+          properties: {
+            runKey: { type: "string", minLength: 1, maxLength: 160 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const auth = await authenticateRequest(
+        request,
+        reply,
+        pool,
+        accessTokenSecret,
+      );
+      if (!auth) return;
+      try {
+        const instance = await enterDungeonInstance(pool!, {
+          userId: auth.id,
+          characterId: request.params.characterId,
+          dungeonId: request.params.dungeonId,
+          runKey: request.body.runKey,
+        });
+        await recordTrustedQuestEvent(pool!, {
+          eventKey: `dungeon-enter:${instance.instanceId}`,
+          userId: auth.id,
+          characterId: request.params.characterId,
+          eventType: "dungeon_entered",
+          targetId: request.params.dungeonId,
+        });
+        return { instance };
+      } catch (error) {
+        if (
+          error instanceof DungeonRuntimeError ||
+          error instanceof QuestRuntimeError
+        ) {
+          const status = error.code.endsWith("NOT_FOUND")
+            ? 404
+            : error.code.includes("FACTION")
+              ? 403
+              : 409;
+          return reply
+            .code(status)
+            .send({ error: { code: error.code, message: error.message } });
+        }
+        request.log.error({ err: error }, "Dungeon entry failed");
+        return databaseUnavailable(reply);
+      }
+    },
+  );
 
   app.post<{ Params: { characterId: string; questId: string } }>(
     "/v1/characters/:characterId/quests/:questId/claim",

@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
@@ -8,6 +8,12 @@ import {
   ContentRewardError,
   grantDungeonCompletionRewards,
 } from "./content-rewards.js";
+import {
+  startQuest,
+  recordTrustedQuestEvent,
+  enterDungeonInstance,
+  applyDungeonBossDamage,
+} from "./content-runtime.js";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 const databaseSuite = testDatabaseUrl ? describe : describe.skip;
@@ -175,6 +181,128 @@ databaseSuite("authoritative quest and dungeon completion rewards", () => {
     expect(claims.rowCount).toBe(1);
     expect(inventory.rowCount).toBe(1);
     expect(inventory.rows[0]?.quantity).toBe(1);
+  });
+
+  it("starts quests and advances only configured objectives from idempotent trusted events", async () => {
+    const { userId, characterId } = await createCharacter("sovereign_sect", 5);
+    const started = await startQuest(pool, {
+      userId,
+      characterId,
+      questId: "sovereign.ward-that-lied",
+    });
+    expect(started.status).toBe("in_progress");
+    const instance = await enterDungeonInstance(pool, {
+      userId,
+      characterId,
+      dungeonId: "dungeon.underterrace-archive",
+      runKey: `runtime:${randomUUID()}`,
+    });
+    const input = {
+      eventKey: `enter:${instance.instanceId}`,
+      userId,
+      characterId,
+      eventType: "dungeon_entered" as const,
+      targetId: "dungeon.underterrace-archive",
+    };
+    const [first, replay] = await Promise.all([
+      recordTrustedQuestEvent(pool, input),
+      recordTrustedQuestEvent(pool, input),
+    ]);
+    expect([first.applied, replay.applied].sort()).toEqual([false, true]);
+    const progress = await pool.query<{
+      status: string;
+      objective_progress: Record<string, number>;
+    }>(
+      "SELECT status,objective_progress FROM quest_progress WHERE character_id=$1 AND quest_id='sovereign.ward-that-lied' AND content_version=1",
+      [characterId],
+    );
+    expect(progress.rows[0]?.status).toBe("in_progress");
+    expect(
+      progress.rows[0]?.objective_progress["sovereign.ward-that-lied.obj3"],
+    ).toBe(1);
+    const events = await pool.query(
+      "SELECT id FROM quest_progress_events WHERE event_key=$1 AND character_id=$2",
+      [input.eventKey, characterId],
+    );
+    expect(events.rowCount).toBe(1);
+  });
+
+  it("tracks authoritative dungeon boss defeat and persists one reward through replay", async () => {
+    const { userId, characterId } = await createCharacter("sovereign_sect", 5);
+    const instance = await enterDungeonInstance(pool, {
+      userId,
+      characterId,
+      dungeonId: "dungeon.underterrace-archive",
+      runKey: `boss-run:${randomUUID()}`,
+    });
+    const firstHit = await applyDungeonBossDamage(pool, {
+      instanceId: instance.instanceId,
+      eventKey: `boss-hit-1:${randomUUID()}`,
+      userId,
+      characterId,
+      encounterId: "encounter.census-warden",
+      damage: 500,
+      random: () => 0,
+    });
+    expect(firstHit).toMatchObject({
+      currentHealth: 350,
+      defeated: false,
+      completed: false,
+    });
+    const input = {
+      instanceId: instance.instanceId,
+      eventKey: `boss-hit-2:${randomUUID()}`,
+      userId,
+      characterId,
+      encounterId: "encounter.census-warden",
+      damage: 500,
+      random: () => 0,
+    };
+    const first = await applyDungeonBossDamage(pool, input);
+    const replay = await applyDungeonBossDamage(pool, input);
+    expect(first).toMatchObject({
+      currentHealth: 0,
+      defeated: true,
+      completed: true,
+    });
+    expect(first.reward?.granted).toBe(true);
+    expect(replay).toMatchObject({
+      currentHealth: 0,
+      defeated: true,
+      completed: true,
+    });
+    expect(replay.reward?.granted).toBe(false);
+    const instanceRows = await pool.query(
+      "SELECT id FROM dungeon_instances WHERE id=$1 AND status='completed'",
+      [instance.instanceId],
+    );
+    const encounters = await pool.query(
+      "SELECT id FROM dungeon_encounter_events WHERE instance_id=$1",
+      [instance.instanceId],
+    );
+    const claims = await pool.query(
+      "SELECT id FROM character_reward_claims WHERE event_key=$1 AND character_id=$2",
+      [`dungeon:instance:${instance.instanceId}`, characterId],
+    );
+    expect(instanceRows.rowCount).toBe(1);
+    expect(encounters.rowCount).toBe(1);
+    const damageEvents = await pool.query(
+      "SELECT id FROM dungeon_damage_events WHERE instance_id=$1",
+      [instance.instanceId],
+    );
+    const encounterState = await pool.query<{
+      current_health: number;
+      status: string;
+    }>(
+      "SELECT current_health,status FROM dungeon_encounter_state WHERE instance_id=$1 AND encounter_id='encounter.census-warden'",
+      [instance.instanceId],
+    );
+    expect(damageEvents.rowCount).toBe(2);
+    expect(encounterState.rows[0]).toEqual({
+      current_health: 0,
+      status: "defeated",
+    });
+    expect(claims.rowCount).toBe(1);
   });
 
   it("rejects incomplete dungeon encounter sets without recording a completion", async () => {
