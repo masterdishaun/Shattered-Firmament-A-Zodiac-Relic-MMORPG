@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 
 var api_base := "http://127.0.0.1:2567"
 var game_url := "ws://127.0.0.1:2568"
@@ -614,4 +614,3 @@ func _fail(message: String) -> void:
 	if game_scene != null:
 		game_scene.queue_free()
 	quit(1)
-
