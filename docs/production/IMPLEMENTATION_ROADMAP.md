@@ -289,8 +289,16 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Expanded support eligibility so a healer can qualify by healing an ally who has participated in that enemy encounter, even when the enemy is targeting a different player. The target and healer must both be within 12 world units of the enemy and all entities must be in the same map. This preserves nearby-combat relevance and avoids awarding support credit for distant or uninvolved healing.
 - Added unit coverage for valid support, uninvolved targets, out-of-range healers and cross-map targets. Party membership is not yet a first-class game system; this eligibility uses actual encounter participation and proximity rather than assuming a party exists.
 
-
 ## Progress log - Phase 19 end-to-end reward recovery verification
 
 - Extended the two-client Godot multiplayer smoke test to defeat a live server-owned Ashen Wisp, require a server-confirmed personal XP/Silver reward event, then independently query the authenticated reward-history API and assert the same XP/Silver claim is durably recoverable.
 - Ran against a fresh disposable PostgreSQL 17 cluster with migrations `0001` through `0006` applied, and isolated local API/game ports. Result: `GODOT_MULTIPLAYER_SMOKE=PASS`; database inspection confirmed one completed outbox event, one unique reward claim, 84 XP and 4 Silver awarded. No inventory item was expected in this random roll. The isolated local game/API service and disposable PostgreSQL cluster were stopped and removed after verification. No production services/data were used.
+
+## Progress log - Phase 21 character selection UI foundation
+
+- Added a standalone Godot 4.7.2 character-selection scene with the approved hybrid composition: faction cards, central 3D inspection preview, class cards, character naming, and independent body-presentation/body-type controls.
+- Added faction theme tokens for Sovereign Sect (jade/ivory/antique gold), Ashen Syndicate (obsidian/crimson/violet), and Astral Concord (midnight blue/silver/celestial cyan). Shared layout, typography and card states remain consistent while the selected faction changes accents and preview atmosphere.
+- The class list is loaded from the shared `character-archetypes.json` fixture; faction selection does not filter or mutate class/appearance selections. The preview uses procedural primitives and class-specific weapon silhouettes as blockout art only.
+- Added global Master-bus mute control, settings entry dialog, validation for short character names, and a structured selection payload signal. This scene is not yet wired to the authenticated character-creation API and does not claim persistence.
+- Added `GODOT_CHARACTER_SELECTION_SMOKE=PASS` coverage for scene loading, three faction cards, current class cards, preview viewport, settings/mute controls, selection independence and payload fields. Godot 4.7.2 headless editor scan passed. Existing world scene remains unchanged in this foundation fold; no server or production data was modified.
+- Remaining: connect this UI to the authenticated account/character flow, complete the canonical eight-class content fixture in coordination with the locked design roster, replace primitive preview art, add settings persistence/controller navigation, and perform GUI/viewport visual review.
