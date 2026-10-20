@@ -20,7 +20,7 @@ Deliver a cinematic character-selection and creation surface for Shattered Firma
 - Faction, class, and appearance are independent selections.
 - All classes are available to every gender/body presentation; no class is gender-locked.
 - Appearance is a separate axis, with body presentation and body type independently adjustable.
-- The UI must not promise server persistence before the API integration is wired.
+- Name, class and faction are sent through the existing authenticated API. Body presentation and body type are preview-only and are not persisted by the current server schema.
 - The current character archetype fixture is the source for selectable class IDs. The screen is data-driven and must grow with the canonical class catalog rather than hard-code a class-count limit.
 - Faction choice sets the selected faction theme and preview accents; it must not silently change the selected class or appearance.
 
@@ -31,7 +31,7 @@ Deliver a cinematic character-selection and creation surface for Shattered Firma
 - Selecting a class updates the selected card, class description, and preview weapon only.
 - Body presentation and body type update preview proportions independently.
 - Invalid short names are rejected locally with visible feedback.
-- The primary action emits a structured selection payload; server-backed creation is not claimed by this scene alone.
+- The main scene routes the structured selection payload through the existing authenticated character API. Successful creation selects the returned character ID, requests a one-time join ticket, and joins the authoritative world room. Existing characters can be selected from the account roster.
 - Global mute is a real Master bus mute toggle. Settings is an explicit local-prototype dialog until full settings persistence is implemented.
 
 ## Acceptance for this UI foundation
@@ -40,10 +40,10 @@ Deliver a cinematic character-selection and creation surface for Shattered Firma
 2. The scene instantiates and contains all three factions, all class entries from the fixture, name and appearance selectors, settings and mute controls.
 3. Faction and class selection are independent; class selection never filters based on faction or appearance.
 4. Character payload includes name, class ID, faction ID, body presentation and body type.
-5. Existing prototype and multiplayer smoke tests remain unchanged and pass.
+5. Character-selection, authenticated create-and-enter, prototype, and multiplayer smoke tests pass against the documented local/disposable test setup.
 6. No server data or production services are modified.
 
 ## Known limits
 
-- The current fixture has three implemented server archetypes. The UI reads the fixture dynamically, so the complete approved launch roster can be added through canonical content without redesigning the layout.
-- Character mesh, cloth, hair, face, animations, lighting polish, controller navigation, localization, and API persistence are future integration/presentation work. The current preview is a primitive blockout.
+- The current fixture has three implemented server archetypes. The UI reads the fixture dynamically, so the locked eight-class launch roster can be added through canonical content without redesigning the layout; those additional server-supported archetypes are not yet present in this branch.
+- Character mesh, cloth, hair, face, animations, lighting polish, controller navigation, localization, and appearance persistence remain future presentation/content work. The current preview is a primitive blockout. Appearance options are not yet saved to character records; account, class, faction, roster, and world-entry flow use the existing authenticated API.

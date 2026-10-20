@@ -3,6 +3,8 @@ extends Control
 signal create_requested(character_data: Dictionary)
 signal enter_world_requested(character_data: Dictionary)
 signal settings_opened
+signal account_requested
+signal enter_existing_requested(character_id: String)
 
 const FACTIONS: Array[Dictionary] = [
 	{
@@ -45,6 +47,9 @@ var faction_atmosphere: ColorRect
 var faction_motto: Label
 var class_description: Label
 var character_name: LineEdit
+var existing_character_select: OptionButton
+var existing_characters: Array[Dictionary] = []
+var selected_existing_character_id := ""
 var body_presentation: OptionButton
 var body_type: OptionButton
 var preview_root: Node3D
@@ -127,6 +132,11 @@ func _build_screen() -> void:
 	header_row.add_child(brand_stack)
 	brand_stack.add_child(_label("SHATTERED FIRMAMENT", 22, TEXT_PRIMARY, true))
 	brand_stack.add_child(_label("A ZODIAC RELIC MMORPG  /  CHARACTER FORGE", 10, TEXT_MUTED))
+	var account_button := _button("ACCOUNT", 12)
+	account_button.name = "AccountButton"
+	account_button.custom_minimum_size = Vector2(100, 40)
+	account_button.pressed.connect(func() -> void: account_requested.emit())
+	header_row.add_child(account_button)
 	var settings_button := _button("SETTINGS", 12)
 	settings_button.name = "SettingsButton"
 	settings_button.custom_minimum_size = Vector2(110, 40)
@@ -293,6 +303,19 @@ func _build_character_preview(parent: HBoxContainer) -> void:
 	character_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	character_name.custom_minimum_size.y = 38
 	name_row.add_child(character_name)
+	character_name.text_changed.connect(_on_character_name_changed)
+	var existing_row := HBoxContainer.new()
+	existing_row.add_theme_constant_override("separation", 8)
+	preview_layout.add_child(existing_row)
+	existing_row.add_child(_label("ROSTER", 10, TEXT_MUTED, true))
+	existing_character_select = OptionButton.new()
+	existing_character_select.name = "ExistingCharacterSelect"
+	existing_character_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	existing_character_select.add_item("Create a new character")
+	existing_character_select.set_item_metadata(0, "")
+	existing_character_select.select(0)
+	existing_character_select.item_selected.connect(_on_existing_character_selected)
+	existing_row.add_child(existing_character_select)
 	var appearance_row := HBoxContainer.new()
 	appearance_row.add_theme_constant_override("separation", 8)
 	preview_layout.add_child(appearance_row)
@@ -460,12 +483,14 @@ func _class_subtitle(role: String) -> String:
 
 
 func _select_faction(index: int) -> void:
+	_clear_existing_selection(true)
 	selected_faction_index = clampi(index, 0, FACTIONS.size() - 1)
 	_apply_faction_theme()
 	_update_preview()
 
 
 func _select_class(index: int) -> void:
+	_clear_existing_selection(true)
 	selected_class_index = clampi(index, 0, class_catalog.size() - 1)
 	for i in range(class_buttons.size()):
 		var selected := i == selected_class_index
@@ -577,7 +602,74 @@ func _update_preview() -> void:
 			weapon_material.emission_energy_multiplier = 0.6
 
 
+
+func set_network_status(message: String) -> void:
+	preview_status.text = message
+
+
+func _on_characters_loaded(characters: Array) -> void:
+	existing_characters.clear()
+	existing_character_select.clear()
+	existing_character_select.add_item("Create a new character")
+	existing_character_select.set_item_metadata(0, "")
+	for character in characters:
+		if not character is Dictionary:
+			continue
+		existing_characters.append(character)
+		existing_character_select.add_item("%s (Lv %s)" % [String(character.get("name", "Character")), str(character.get("level", 1))])
+		existing_character_select.set_item_metadata(existing_character_select.item_count - 1, String(character.get("id", "")))
+	existing_character_select.select(0)
+	_clear_existing_selection(false)
+	preview_status.text = "Account roster refreshed: %d character(s)." % existing_characters.size()
+
+
+func _on_existing_character_selected(index: int) -> void:
+	var character_id := String(existing_character_select.get_item_metadata(index))
+	if character_id.is_empty():
+		_clear_existing_selection(false)
+		return
+	var selected_character: Dictionary = {}
+	for character in existing_characters:
+		if String(character.get("id", "")) == character_id:
+			selected_character = character
+			break
+	if selected_character.is_empty():
+		_clear_existing_selection(false)
+		return
+	var faction_id := String(selected_character.get("factionId", selected_character.get("faction_id", "")))
+	var class_id := String(selected_character.get("classId", selected_character.get("class_id", "")))
+	for i in range(FACTIONS.size()):
+		if String(FACTIONS[i]["id"]) == faction_id:
+			_select_faction(i)
+			break
+	for i in range(class_catalog.size()):
+		if String(class_catalog[i].get("id", "")) == class_id:
+			_select_class(i)
+			break
+	character_name.text = String(selected_character.get("name", ""))
+	selected_existing_character_id = character_id
+	create_button.text = "ENTER WORLD  >"
+	preview_status.text = "Selected existing character: %s." % character_name.text
+
+
+func _on_character_name_changed(_value: String) -> void:
+	_clear_existing_selection(false)
+
+
+func _clear_existing_selection(clear_name: bool) -> void:
+	if selected_existing_character_id.is_empty():
+		return
+	selected_existing_character_id = ""
+	if clear_name and character_name != null:
+		character_name.text = ""
+	if create_button != null:
+		create_button.text = "FORGE CHARACTER  >"
+
 func _submit_character() -> void:
+	if not selected_existing_character_id.is_empty():
+		preview_status.text = "Requesting entry for existing character..."
+		enter_existing_requested.emit(selected_existing_character_id)
+		return
 	var name := character_name.text.strip_edges()
 	if name.length() < 3:
 		preview_status.text = "Choose a character name with at least 3 characters."
