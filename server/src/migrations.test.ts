@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -52,6 +52,10 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
     const first = await runMigrations(pool);
     expect(first.applied).toContain("0001_initial.sql");
     expect(first.applied).toContain("0002_character_mana.sql");
+    expect(first.applied).toContain("0003_progression_rewards.sql");
+    expect(first.applied).toContain("0004_pve_reward_item_definitions.sql");
+    expect(first.applied).toContain("0005_character_loot_pity.sql");
+    expect(first.applied).toContain("0006_enemy_reward_outbox.sql");
 
     const tables = await pool.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
@@ -73,11 +77,26 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
       "item_transactions",
       "active_character_leases",
       "schema_migrations",
+      "character_reward_claims",
+      "character_loot_pity",
+      "enemy_reward_outbox",
     ]) {
       expect(tableNames.has(table), `missing migrated table: ${table}`).toBe(
         true,
       );
     }
+
+    const rewardDefinition = await pool.query<{
+      tradeable: boolean;
+      bind_policy: string;
+    }>(
+      `SELECT tradeable, bind_policy FROM item_definitions
+       WHERE id = 'material.ashen-jade-fragment' AND content_version = 1`,
+    );
+    expect(rewardDefinition.rows[0]).toEqual({
+      tradeable: true,
+      bind_policy: "unbound",
+    });
 
     const leaseColumns = await pool.query<{ column_name: string }>(
       "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'active_character_leases'",
@@ -100,6 +119,10 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
     expect(second.applied).toEqual([]);
     expect(second.skipped).toContain("0001_initial.sql");
     expect(second.skipped).toContain("0002_character_mana.sql");
+    expect(second.skipped).toContain("0003_progression_rewards.sql");
+    expect(second.skipped).toContain("0004_pve_reward_item_definitions.sql");
+    expect(second.skipped).toContain("0005_character_loot_pity.sql");
+    expect(second.skipped).toContain("0006_enemy_reward_outbox.sql");
   });
 
   it("enforces case-insensitive account uniqueness and valid character factions", async () => {

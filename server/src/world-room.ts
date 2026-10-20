@@ -1,4 +1,4 @@
-﻿import { Room, ServerError } from "@colyseus/core";
+import { Room, ServerError } from "@colyseus/core";
 import type { Client } from "@colyseus/core";
 import type { Pool } from "pg";
 import {
@@ -8,6 +8,7 @@ import {
   type CombatResultEnvelope,
   type WorldEnemySnapshot,
   type RespawnedEnvelope,
+  type RewardGrantedEnvelope,
 } from "@shattered-firmament/shared/protocol";
 import {
   COMBAT_RULES,
@@ -23,9 +24,15 @@ import {
 import {
   ENEMY_DEFINITIONS,
   createWorldEnemies,
+  isNearbySupportEligible,
   stepEnemy,
   type PveEnemy,
 } from "./pve.js";
+import {
+  enqueueEnemyReward,
+  processEnemyRewardOutbox,
+  type EnemyRewardOutboxInput,
+} from "./reward-outbox.js";
 import {
   FACTION_START_ZONE,
   isPositionWalkable,
@@ -54,6 +61,14 @@ import {
 
 interface WorldRoomOptions {
   pool: Pool;
+}
+
+interface EnemyRewardParticipant {
+  userId: string;
+  characterId: string;
+  sessionId: string;
+  damage: number;
+  support: boolean;
 }
 
 interface WorldPlayerRuntime extends PlayerMovementState {
@@ -92,6 +107,14 @@ export class WorldRoom extends Room<
   private readonly authenticatedClients = new Map<string, ConsumedJoinTicket>();
   private readonly playerStates = new Map<string, WorldPlayerRuntime>();
   private readonly enemies = new Map<string, PveEnemy>();
+  private readonly rewardEnqueueRetries = new Map<
+    string,
+    EnemyRewardOutboxInput
+  >();
+  private readonly enemyParticipants = new Map<
+    string,
+    Map<string, EnemyRewardParticipant>
+  >();
   private readonly characterAbilityCooldowns = new Map<
     string,
     Map<string, number>
@@ -122,6 +145,9 @@ export class WorldRoom extends Room<
     this.clock.setInterval(() => {
       void this.renewActiveLeases();
     }, 30_000);
+    this.clock.setInterval(() => {
+      void this.flushRewardEnqueueRetries();
+    }, 1_000);
     this.clock.setInterval(() => {
       void this.persistActivePositions();
     }, POSITION_CHECKPOINT_INTERVAL_MS);
@@ -368,18 +394,50 @@ export class WorldRoom extends Room<
       actor.mana = result.resourceAfter ?? actor.mana;
       actor.abilityCooldowns.set(intent.abilityId, now);
       if (enemy) {
+        const wasAlive = enemy.health > 0;
+        if (wasAlive && result.damage > 0)
+          this.recordEnemyParticipant(enemy, actor, result.damage, false);
         enemy.health = result.targetHealth ?? enemy.health;
-        if (enemy.health <= 0) {
+        if (wasAlive && enemy.health <= 0) {
           enemy.respawnAtMs =
             now + ENEMY_DEFINITIONS[enemy.archetype].respawnDelayMs;
           enemy.aggroCharacterId = "";
           enemy.aiState = "dead";
           enemy.telegraphEndsAtMs = 0;
+          const participants = [
+            ...(this.enemyParticipants.get(enemy.id)?.values() ?? []),
+          ].filter(
+            (participant) =>
+              participant.support ||
+              participant.damage >= enemy.maxHealth * 0.05,
+          );
+          this.enemyParticipants.delete(enemy.id);
+          const eventKey = `${enemy.id}:${enemy.respawnAtMs}`;
+          for (const participant of participants)
+            void this.queueEnemyReward(participant, enemy, eventKey);
         }
       } else if (targetPlayer) {
         targetPlayer.health = result.targetHealth ?? targetPlayer.health;
         if (targetPlayer.health <= 0)
           targetPlayer.respawnAtMs = now + ABILITY_RULES.respawnDelayMs;
+        if (result.healing > 0) {
+          for (const engagedEnemy of this.enemies.values()) {
+            if (
+              engagedEnemy.health > 0 &&
+              isNearbySupportEligible({
+                healer: { x: actor.x, y: actor.y, mapId: actor.mapId },
+                target: { ...targetPlayer, mapId: targetPlayer.mapId },
+                enemy: { ...engagedEnemy, mapId: engagedEnemy.mapId },
+                targetParticipated:
+                  this.enemyParticipants
+                    .get(engagedEnemy.id)
+                    ?.has(targetPlayer.characterId) ?? false,
+              })
+            ) {
+              this.recordEnemyParticipant(engagedEnemy, actor, 0, true);
+            }
+          }
+        }
         void this.queuePositionPersistence([targetPlayer]);
       }
       void this.queuePositionPersistence([actor]);
@@ -413,6 +471,113 @@ export class WorldRoom extends Room<
     } else client.send("S2C_CombatResult", envelope);
   }
 
+  private recordEnemyParticipant(
+    enemy: PveEnemy,
+    actor: WorldPlayerRuntime,
+    damage: number,
+    support: boolean,
+  ) {
+    let participants = this.enemyParticipants.get(enemy.id);
+    if (!participants) {
+      participants = new Map();
+      this.enemyParticipants.set(enemy.id, participants);
+    }
+    const existing = participants.get(actor.characterId);
+    participants.set(actor.characterId, {
+      userId: actor.userId,
+      characterId: actor.characterId,
+      sessionId: actor.sessionId,
+      damage: (existing?.damage ?? 0) + damage,
+      support: support || (existing?.support ?? false),
+    });
+  }
+
+  private async queueEnemyReward(
+    participant: EnemyRewardParticipant,
+    enemy: PveEnemy,
+    eventKey: string,
+  ) {
+    const input: EnemyRewardOutboxInput = {
+      eventKey,
+      userId: participant.userId,
+      characterId: participant.characterId,
+      archetype: enemy.archetype,
+      enemyLevel: ENEMY_DEFINITIONS[enemy.archetype].level,
+    };
+    const retryKey = `${eventKey}:${participant.characterId}`;
+    try {
+      await enqueueEnemyReward(this.pool, input);
+      this.rewardEnqueueRetries.delete(retryKey);
+      await this.deliverPersistedReward(input, participant.sessionId);
+    } catch (error) {
+      // Retain transient enqueue failures in memory; the DB outbox survives restarts after insert.
+      this.rewardEnqueueRetries.set(retryKey, input);
+      console.error("Failed to enqueue PvE reward; retry retained in memory", {
+        eventKey,
+        characterId: participant.characterId,
+        error,
+      });
+    }
+  }
+
+  private async flushRewardEnqueueRetries() {
+    for (const [retryKey, input] of this.rewardEnqueueRetries) {
+      try {
+        await enqueueEnemyReward(this.pool, input);
+        this.rewardEnqueueRetries.delete(retryKey);
+      } catch {
+        /* Retry on next tick; do not discard unpersisted rewards. */
+      }
+    }
+  }
+
+  private async deliverPersistedReward(
+    input: EnemyRewardOutboxInput,
+    sessionId: string,
+  ) {
+    try {
+      await processEnemyRewardOutbox(this.pool);
+      const claim = await this.pool.query<{
+        experience_awarded: number;
+        silver_awarded: number;
+        loot: RewardGrantedEnvelope["payload"]["loot"];
+        level: number;
+        experience: string;
+        silver: string;
+      }>(
+        `SELECT r.experience_awarded, r.silver_awarded, r.loot, c.level, c.experience, w.balance AS silver
+         FROM character_reward_claims r JOIN characters c ON c.id = r.character_id
+         JOIN currency_wallets w ON w.user_id = r.user_id AND w.currency_code = 'silver'
+         WHERE r.event_key = $1 AND r.character_id = $2`,
+        [input.eventKey, input.characterId],
+      );
+      const row = claim.rows[0];
+      if (!row) return;
+      const client = this.clients.find(
+        (candidate) => candidate.sessionId === sessionId,
+      );
+      const envelope: RewardGrantedEnvelope = {
+        type: "S2C_RewardGranted",
+        protocolVersion: PROTOCOL_VERSION,
+        payload: {
+          sourceId: input.archetype,
+          experienceAwarded: row.experience_awarded,
+          totalExperience: Number(row.experience),
+          level: row.level,
+          silverAwarded: row.silver_awarded,
+          totalSilver: Number(row.silver),
+          loot: row.loot,
+        },
+      };
+      client?.send("S2C_RewardGranted", envelope);
+    } catch (error) {
+      console.error("Failed to notify persisted PvE reward", {
+        eventKey: input.eventKey,
+        characterId: input.characterId,
+        error,
+      });
+    }
+  }
   private handleZoneTransition(client: Client, message: unknown) {
     const state = this.playerStates.get(client.sessionId);
     if (

@@ -5,6 +5,7 @@ signal character_ticketed(character: Dictionary)
 signal world_joined(character: Dictionary)
 signal world_snapshot(snapshot: Dictionary)
 signal combat_result(result: Dictionary)
+signal reward_granted(reward: Dictionary)
 signal zone_changed(zone: Dictionary)
 signal close_requested
 
@@ -506,6 +507,10 @@ func _on_room_message(message_type: Variant, data: Variant) -> void:
 	var message_name := String(message_type)
 	var envelope: Dictionary = data if data is Dictionary else {}
 	var payload: Dictionary = envelope.get("payload", {})
+	if message_name == "S2C_RewardGranted":
+		_set_status("Received a server-confirmed progression reward.")
+		reward_granted.emit(payload)
+		return
 	if message_name == "S2C_CombatResult":
 		combat_result.emit(payload)
 		if not bool(payload.get("accepted", false)):

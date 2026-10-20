@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import Fastify, {
   type FastifyInstance,
   type FastifyReply,
@@ -482,6 +482,56 @@ export const createApp = (
     }
   });
 
+  app.get<{ Params: { characterId: string } }>(
+    "/v1/characters/:characterId/rewards",
+    {
+      schema: {
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["characterId"],
+          properties: { characterId: { type: "string", format: "uuid" } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const auth = await authenticateRequest(
+        request,
+        reply,
+        pool,
+        accessTokenSecret,
+      );
+      if (!auth) return;
+      try {
+        const ownership = await pool!.query(
+          "SELECT 1 FROM characters WHERE id = $1 AND user_id = $2 AND status = 'active'",
+          [request.params.characterId, auth.id],
+        );
+        if (!ownership.rowCount) {
+          return reply.code(404).send({
+            error: {
+              code: "CHARACTER_NOT_FOUND",
+              message: "The requested character was not found.",
+            },
+          });
+        }
+        const result = await pool!.query(
+          `SELECT id, source_type AS "sourceType", source_id AS "sourceId",
+                  experience_awarded::integer AS "experienceAwarded",
+                  silver_awarded::integer AS "silverAwarded", loot,
+                  created_at AS "createdAt"
+           FROM character_reward_claims
+           WHERE character_id = $1 AND user_id = $2
+           ORDER BY created_at DESC LIMIT 50`,
+          [request.params.characterId, auth.id],
+        );
+        return { rewards: result.rows };
+      } catch (error) {
+        request.log.error({ err: error }, "Character reward history failed");
+        return databaseUnavailable(reply);
+      }
+    },
+  );
   app.post<{ Body: CreateCharacterBody }>(
     "/v1/characters",
     {

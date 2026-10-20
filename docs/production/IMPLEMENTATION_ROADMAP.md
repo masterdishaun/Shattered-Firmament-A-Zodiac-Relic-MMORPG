@@ -75,7 +75,7 @@
 
 ## Phase 18 — Progression and economy specification
 
-- Formalise the level-100 XP curve and 70–100 active-hour target, five level bands, normalized gear stat budgets, and the 8–12% adjacent-tier power-growth guardrail.
+- Formalise the level-100 XP curve and 70-100 active-hour target, five level bands, normalized gear stat budgets, and the 8-12% adjacent-tier power-growth guardrail.
 - Define default item binding/tradeability, Silver sources/sinks, personal reward profiles, contribution eligibility, bad-luck protection and anti-farm rules.
 - Make the profile machine-checkable in the progression schema/fixture and reward-table fixtures; add tests for XP totals/bands, stat-budget sums, binding rules, reward references and per-character reward shapes.
 - Keep every numeric target explicitly provisional until a mixed-activity simulator and closed playtests validate pacing, role contribution and economy stability. This phase is a specification/contract gate; it does not implement runtime XP grants, inventory settlement, trading, marketplace or Silver ledger flows.
@@ -221,7 +221,6 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Verification: build/typecheck passed; shared protocol/schema suite passed (16/16); database-backed server suite passed 60/60; Godot 4.7.2 editor scan and prototype smoke passed. Two-client multiplayer E2E passed including Mystic Astral Bolt damage/resource spend, enemy snapshots, PvP damage, defeat, sanctuary respawn, persisted restored health, return to contested zone, and reconnect recovery. Only disposable PostgreSQL was used; no production database or deployment was touched.
 - Remaining: richer enemy roster/AI states, line-of-sight, ability animations/VFX, persistent cooldowns across server restart, combat telemetry/load testing, balance pass and GUI playtest. All combat tuning remains provisional.
 
-
 ## Progress log - Phase 17 enemy variety and combat feedback
 
 - Replaced the single-enemy tuning block with a data-driven roster: ranged Ashen Wisp, durable Jadebound Sentinel and fast Rift Stalker. All three are server-owned spawns in the Ashen Frontier; archetype-specific health, damage, ranges, movement, telegraph timing, cooldown and respawn delay are provisional.
@@ -237,10 +236,61 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Local verification on the hardening branch: `corepack pnpm build`, `corepack pnpm typecheck`, `corepack pnpm test` and `corepack pnpm lint` passed. Shared schema/content tests passed 16/16; the local no-database run passed 55 server tests with 12 database-dependent tests skipped. GitHub Actions then passed the full suite with its disposable PostgreSQL 17 service and `TEST_DATABASE_URL`, exercising database-backed integration and migration tests. Godot 4.7.2 headless editor scan and prototype smoke exited successfully. The two-client Godot E2E was rerun against a fresh disposable PostgreSQL 17 cluster: migrations 0001 and 0002 applied, and `GODOT_MULTIPLAYER_SMOKE=PASS` covered zone/PvP, PvE ability/resource use, movement replication, death/respawn persistence, reconnect and logout. The temporary database and test server were stopped and removed; no production database or deployment was touched.
 - This is a hardening follow-up to Phase 17, not a production release. The additive `0002_character_mana.sql` migration remains a release gate; Phase 16/17 have not been deployed to production.
 
-## Progress log — Phase 18 progression and economy specification
+## Progress log - Phase 18 progression and economy specification
 
-- Added a provisional deterministic XP curve: XP to advance from level L is 4,000 + 60 × L for levels 1–99, totalling 693,000 XP to level 100. The five band totals are encoded in automated tests and remain pacing hypotheses against the 70–100 active-hour target.
-- Added a normalized item stat budget (45% offense, 30% survivability, 15% role expression, 10% utility), with bounded role shifts and a provisional ±5% same-tier contribution target. Adjacent gear tiers retain the existing 8–12% effective-power guardrail.
+- Added a provisional deterministic XP curve: XP to advance from level L is 4,000 + 60 * L for levels 1-99, totalling 693,000 XP to level 100. The five band totals are encoded in automated tests and remain pacing hypotheses against the 70-100 active-hour target.
+- Added a normalized item stat budget (45% offense, 30% survivability, 15% role expression, 10% utility), with bounded role shifts and a provisional +/- 5% same-tier contribution target. Adjacent gear tiers retain the existing 8-12% effective-power guardrail.
 - Defined default binding/tradeability by category, atomic/idempotent trade and marketplace flows, Silver sources/sinks, personal loot eligibility, anti-farm rules, and provisional Ashen Frontier/elite/boss reward profiles. Premium currency remains separate from competitive power.
 - Extended the progression schema and fixture with the XP curve/stat budget; added five versioned reward profiles and content tests for XP totals/band totals, stat budget sums, item binding consistency, reward table shape, and rare-drop protection metadata.
 - Verification: `corepack pnpm build`, `corepack pnpm typecheck`, `corepack pnpm test` and `corepack pnpm lint` passed. Shared content/protocol tests passed 17/17; server tests passed 67/67 against a fresh disposable PostgreSQL 17 database, including all 12 database-backed integration/migration tests. `git diff --check` is clean. The disposable cluster was stopped and removed. This phase is specification/contracts only: no runtime reward grants, wallet settlement, marketplace, trade service, or production changes were made.
+
+## Progress log - Phase 19 progression and personal PvE rewards
+
+- Merged Phase 18 specification PR #2 into `main` before implementation. Runtime work is isolated on `phase-19-progression-rewards-runtime`; no production deployment or database was touched.
+- Added the XP curve runtime (`4,000 + 60 × level` XP to advance), level-cap enforcement at 100, and transactionally persisted enemy XP, level-ups, Silver wallet credits and currency-ledger entries.
+- Added additive migration `0003_progression_rewards.sql` with per-character, per-event reward claims. The unique `(event_key, character_id)` constraint and one transaction prevent duplicate XP/Silver grants on retries or concurrent requests.
+- Connected Ashen Frontier enemy defeats to independent personal reward rolls for Rift Stalker, Ashen Wisp and Jadebound Sentinel. Damage participation is tracked per enemy; eligibility requires 5% of enemy max health in recorded damage or qualifying nearby support healing, so reward eligibility is not determined only by the final hit. Reward notifications use the versioned `S2C_RewardGranted` envelope.
+- Added authenticated `GET /v1/characters/:characterId/rewards` history for offline/reconnect recovery. Loot was initially durably recorded as a reward payload; the inventory settlement follow-up below now materializes item instances.
+- Added unit and PostgreSQL integration coverage for XP thresholds/cap, archetype reward ranges, concurrent duplicate claims, atomic Silver/ledger persistence, loot persistence, character ownership, level-up persistence, reward history API and the reward notification schema.
+- Verification: final `corepack pnpm build`, `corepack pnpm typecheck`, `corepack pnpm test` and `corepack pnpm lint` all passed against a fresh disposable PostgreSQL 17 database; shared schema/content tests passed 18/18 and server tests passed 73/73, including all database-backed migration/reward/API tests. `git diff --check` passed. The disposable cluster was stopped and removed. Godot headless validation was not run because the configured Godot 4.7.2 executable was not present at its expected path on the device; rerun the editor scan and prototype smoke before merging.
+- Remaining after the inventory follow-up: level-difference/trivial-enemy diminishing returns, quest/dungeon reward claims, persistent bad-luck protection, more complete party/support eligibility, and durable retry recovery if the database is unavailable during a kill. All values remain provisional; no production data or deployment was touched.
+
+## Progress log - Phase 19 inventory settlement follow-up
+
+- Added migration `0004_pve_reward_item_definitions.sql` to ensure the Ashen-Jade Fragment has a versioned, unbound, tradeable item definition without overwriting an existing definition.
+- PvE reward settlement now creates actual `item_instances` for every rolled loot entry in the same database transaction as the unique reward claim, XP, Silver wallet and ledger update. The item definition is authoritative for tradeability; missing or mismatched definitions abort and roll back the complete reward transaction.
+- Extended PostgreSQL integration coverage to prove concurrent/replayed claims produce one inventory instance, owned by the qualifying character, with the expected item version, quantity and unbound state. Migration tests assert the reward definition and migration idempotency.
+- Verification: build and typecheck passed; lint passed after formatting; full test suite passed against a fresh disposable PostgreSQL 17 cluster (shared 18/18, server 73/73 including database-backed migration, reward and API integration tests); `git diff --check` passed. Godot 4.7.2 headless editor filesystem scan and main-scene smoke run both exited successfully. The disposable test cluster was stopped and its data directory and log were removed after verification.
+- Still not complete: persistent bad-luck protection, quest/dungeon reward claims, durable reward retry after database failure, and expanded party/support eligibility. PR #3 remains open pending remaining gates; no production service or database was touched.
+
+## Progress log - Phase 19 anti-farming XP follow-up
+
+- Added explicit provisional levels to the three Ashen Frontier enemy archetypes (Ashen Wisp 1, Rift Stalker 2, Jadebound Sentinel 3) and feed the server-owned level into reward settlement.
+- Added level-difference XP scaling: full XP when the player is at most four levels above the enemy; 50% at +5 to +9; 25% at +10 to +19; 10% at +20 or more. Higher-level enemies do not incur a penalty. Players already at level 100 receive no further XP, while Silver and eligible loot still settle normally.
+- XP scaling is applied before the reward claim is persisted, so the claim history records the actual XP credited. Added unit and PostgreSQL integration coverage for thresholds, validation, persisted reduced XP, and unchanged Silver settlement.
+- All enemy levels and multipliers are provisional balance values for later simulation/playtesting. Persistent bad-luck protection, quest/dungeon rewards, durable retry after database failure, and expanded party/support eligibility remain open.
+
+## Progress log - Phase 19 persistent loot pity
+
+- Added `character_loot_pity`, keyed by character and protected material, with a bounded consecutive-miss counter. A fragment is guaranteed after nine recorded misses (the tenth eligible defeat); a natural or guaranteed drop resets the counter.
+- The pity read, unique reward claim, pity update, item materialization, XP, Silver, and currency ledger remain in one PostgreSQL transaction. Character-row locking serializes grants for the same character; duplicate event replays return before the counter can advance.
+- Added migration assertions and PostgreSQL integration coverage for miss tracking, forced drop/reset, and concurrent duplicate replay. Pity currently protects only the Ashen-Jade Fragment; this threshold is provisional for simulation/playtesting.
+- Durable retry after database failure and expanded party/support eligibility remain open. No production service or database was touched.
+
+## Progress log - Phase 19 durable reward outbox follow-up
+
+- Added migration `0006_enemy_reward_outbox.sql` and a PostgreSQL-backed reward outbox. Enemy reward events are persisted before settlement, uniquely keyed per event and character, and processed in bounded batches using `FOR UPDATE SKIP LOCKED` plus a 60-second lease. The worker runs at game-server service scope rather than room scope, so it continues if a room is disposed. Expired leases are reclaimable after a worker/process interruption; settlement remains idempotent through the existing reward-claim unique key.
+- Added bounded exponential retry scheduling and error recording for failed settlement. If PostgreSQL is unavailable before the event can be inserted, the room retains the event in memory and retries every second while that process remains alive; once the row is inserted, it survives restarts. This pre-insert outage window is an explicit limitation, not a claim of full crash-proof persistence. Offline/reconnect clients can recover settled claims from the authenticated reward-history endpoint.
+- Added PostgreSQL integration coverage for outbox settlement, expired-lease recovery, worker replay safety and migration idempotency. Local build, typecheck, lint, and full test suite passed against a fresh disposable PostgreSQL 17 database (shared 18/18, server 81/81). No production service or database was touched.
+- Remaining before PR #3 can be considered for merge: expanded party/support eligibility review, interactive Godot gameplay smoke test, and final release-gate review.
+
+## Progress log - Phase 19 support participation hardening
+
+- Expanded support eligibility so a healer can qualify by healing an ally who has participated in that enemy encounter, even when the enemy is targeting a different player. The target and healer must both be within 12 world units of the enemy and all entities must be in the same map. This preserves nearby-combat relevance and avoids awarding support credit for distant or uninvolved healing.
+- Added unit coverage for valid support, uninvolved targets, out-of-range healers and cross-map targets. Party membership is not yet a first-class game system; this eligibility uses actual encounter participation and proximity rather than assuming a party exists.
+
+
+## Progress log - Phase 19 end-to-end reward recovery verification
+
+- Extended the two-client Godot multiplayer smoke test to defeat a live server-owned Ashen Wisp, require a server-confirmed personal XP/Silver reward event, then independently query the authenticated reward-history API and assert the same XP/Silver claim is durably recoverable.
+- Ran against a fresh disposable PostgreSQL 17 cluster with migrations `0001` through `0006` applied, and isolated local API/game ports. Result: `GODOT_MULTIPLAYER_SMOKE=PASS`; database inspection confirmed one completed outbox event, one unique reward claim, 84 XP and 4 Silver awarded. No inventory item was expected in this random roll. The isolated local game/API service and disposable PostgreSQL cluster were stopped and removed after verification. No production services/data were used.

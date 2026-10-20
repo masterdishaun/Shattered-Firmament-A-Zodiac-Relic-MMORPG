@@ -1,4 +1,4 @@
-﻿export type EnemyArchetypeId =
+export type EnemyArchetypeId =
   "ashen-wisp" | "jadebound-sentinel" | "rift-stalker";
 export type EnemyAiState =
   "idle" | "approach" | "telegraph" | "recover" | "dead";
@@ -8,6 +8,7 @@ export interface PveEnemy {
   archetype: EnemyArchetypeId;
   attackStyle: EnemyAttackStyle;
   name: string;
+  level: number;
   mapId: string;
   x: number;
   y: number;
@@ -19,6 +20,31 @@ export interface PveEnemy {
   nextAttackAtMs: number;
   respawnAtMs: number;
 }
+export interface NearbySupportEligibilityInput {
+  healer: { x: number; y: number; mapId: string };
+  target: { x: number; y: number; mapId: string; characterId: string };
+  enemy: { x: number; y: number; mapId: string; aggroCharacterId: string };
+  targetParticipated: boolean;
+}
+
+/** Support healing qualifies only for an engaged ally and while both players are near that enemy. */
+export function isNearbySupportEligible(
+  input: NearbySupportEligibilityInput,
+): boolean {
+  const { healer, target, enemy } = input;
+  if (healer.mapId !== enemy.mapId || target.mapId !== enemy.mapId)
+    return false;
+  if (
+    !input.targetParticipated &&
+    enemy.aggroCharacterId !== target.characterId
+  )
+    return false;
+  return (
+    Math.hypot(target.x - enemy.x, target.y - enemy.y) <= 12 &&
+    Math.hypot(healer.x - enemy.x, healer.y - enemy.y) <= 12
+  );
+}
+
 export interface PvePlayer {
   characterId: string;
   mapId: string;
@@ -35,6 +61,7 @@ export interface EnemyStepResult {
 export interface EnemyDefinition {
   id: EnemyArchetypeId;
   name: string;
+  level: number;
   mapId: string;
   x: number;
   y: number;
@@ -53,6 +80,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyArchetypeId, EnemyDefinition> = {
   "ashen-wisp": {
     id: "ashen-wisp",
     name: "Ashen Wisp",
+    level: 1,
     mapId: "zone.ashen-frontier",
     x: 3,
     y: -23,
@@ -70,6 +98,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyArchetypeId, EnemyDefinition> = {
   "jadebound-sentinel": {
     id: "jadebound-sentinel",
     name: "Jadebound Sentinel",
+    level: 3,
     mapId: "zone.ashen-frontier",
     x: -3,
     y: -24,
@@ -87,6 +116,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyArchetypeId, EnemyDefinition> = {
   "rift-stalker": {
     id: "rift-stalker",
     name: "Rift Stalker",
+    level: 2,
     mapId: "zone.ashen-frontier",
     x: 7,
     y: -25,
@@ -125,6 +155,7 @@ export function createEnemy(
     archetype,
     attackStyle: definition.attackStyle,
     name: definition.name,
+    level: definition.level,
     mapId: definition.mapId,
     x: definition.x,
     y: definition.y,

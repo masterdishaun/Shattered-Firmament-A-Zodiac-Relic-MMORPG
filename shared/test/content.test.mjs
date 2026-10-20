@@ -505,3 +505,42 @@ test("inventory item instances and trade offers enforce structural safety rules"
     "A trade offer cannot request a zero or negative price.",
   );
 });
+
+test("reward-granted protocol validates server-owned progression and personal loot", async () => {
+  const schema = await loadSchema("reward-granted");
+  const validate = new Ajv2020({ allErrors: true }).compile(schema);
+  const envelope = {
+    type: "S2C_RewardGranted",
+    protocolVersion: 1,
+    payload: {
+      sourceId: "rift-stalker",
+      experienceAwarded: 60,
+      totalExperience: 60,
+      level: 1,
+      silverAwarded: 3,
+      totalSilver: 3,
+      loot: [
+        {
+          itemId: "material.ashen-jade-fragment",
+          quantity: 1,
+          tradeable: true,
+        },
+      ],
+    },
+  };
+  assert.equal(validate(envelope), true, JSON.stringify(validate.errors));
+  assert.equal(
+    validate({
+      ...envelope,
+      payload: { ...envelope.payload, silverAwarded: -1 },
+    }),
+    false,
+  );
+  assert.equal(
+    validate({
+      ...envelope,
+      payload: { ...envelope.payload, clientDamage: 999 },
+    }),
+    false,
+  );
+});

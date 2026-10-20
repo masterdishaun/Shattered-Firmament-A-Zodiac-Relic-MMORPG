@@ -1,10 +1,11 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   ENEMY_DEFINITIONS,
   ASHEN_WISP,
   createAshenWisp,
   createEnemy,
   createWorldEnemies,
+  isNearbySupportEligible,
   stepEnemy,
 } from "./pve.js";
 const player = (
@@ -188,5 +189,36 @@ describe("server-authoritative PvE enemy AI", () => {
     expect(enemy.respawnAtMs).toBe(0);
     expect(enemy.aiState).toBe("idle");
     expect(enemy.id).toBe("enemy:rift-stalker-test");
+  });
+  it("grants support eligibility to nearby healers of engaged allies, not distant or uninvolved targets", () => {
+    const input = {
+      healer: { x: 5, y: 0, mapId: "zone.ashen-frontier" },
+      target: {
+        x: 2,
+        y: 0,
+        mapId: "zone.ashen-frontier",
+        characterId: "fighter",
+      },
+      enemy: {
+        x: 0,
+        y: 0,
+        mapId: "zone.ashen-frontier",
+        aggroCharacterId: "other",
+      },
+      targetParticipated: true,
+    };
+    expect(isNearbySupportEligible(input)).toBe(true);
+    expect(
+      isNearbySupportEligible({ ...input, targetParticipated: false }),
+    ).toBe(false);
+    expect(
+      isNearbySupportEligible({ ...input, healer: { ...input.healer, x: 20 } }),
+    ).toBe(false);
+    expect(
+      isNearbySupportEligible({
+        ...input,
+        target: { ...input.target, mapId: "zone.neutral-crossroads" },
+      }),
+    ).toBe(false);
   });
 });

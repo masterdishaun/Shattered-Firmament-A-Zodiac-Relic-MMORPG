@@ -1,4 +1,4 @@
-﻿export const PROTOCOL_VERSION = 1 as const;
+export const PROTOCOL_VERSION = 1 as const;
 export interface ErrorEnvelope {
   type: "S2C_Error";
   protocolVersion: typeof PROTOCOL_VERSION;
@@ -120,5 +120,18 @@ export interface WorldSnapshotEnvelope {
     serverTime: string;
     players: WorldPlayerSnapshot[];
     enemies: WorldEnemySnapshot[];
+  };
+}
+export interface RewardGrantedEnvelope {
+  type: "S2C_RewardGranted";
+  protocolVersion: typeof PROTOCOL_VERSION;
+  payload: {
+    sourceId: string;
+    experienceAwarded: number;
+    totalExperience: number;
+    level: number;
+    silverAwarded: number;
+    totalSilver: number;
+    loot: { itemId: string; quantity: number; tradeable: boolean }[];
   };
 }

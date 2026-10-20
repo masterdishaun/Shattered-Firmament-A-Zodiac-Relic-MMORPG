@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { createApp, type ShatteredFirmamentApp } from "./app.js";
 import { runMigrations } from "./migrations.js";
+import { grantEnemyDefeatRewards } from "./progression.js";
 import { hashOpaqueToken } from "./security.js";
 import {
   consumeJoinTicket,
@@ -109,6 +110,35 @@ databaseSuite("authentication and character API integration", () => {
     });
     expect(create.statusCode).toBe(201);
     const character = create.json().character;
+    await grantEnemyDefeatRewards(migrationPool, {
+      eventKey: `integration-enemy:${randomUUID()}`,
+      userId: tokens.user.id,
+      characterId: character.id,
+      archetype: "rift-stalker",
+      enemyLevel: 2,
+      random: () => 0,
+    });
+    const rewards = await service.app.inject({
+      method: "GET",
+      url: `/v1/characters/${character.id}/rewards`,
+      headers: { authorization: `Bearer ${tokens.accessToken}` },
+    });
+    expect(rewards.statusCode).toBe(200);
+    expect(rewards.json().rewards).toMatchObject([
+      {
+        sourceType: "enemy_defeat",
+        sourceId: "rift-stalker",
+        experienceAwarded: 60,
+        silverAwarded: 3,
+        loot: [
+          {
+            itemId: "material.ashen-jade-fragment",
+            quantity: 1,
+            tradeable: true,
+          },
+        ],
+      },
+    ]);
     expect(character).toMatchObject({
       name: "Jade Hero",
       classId: "vanguard",

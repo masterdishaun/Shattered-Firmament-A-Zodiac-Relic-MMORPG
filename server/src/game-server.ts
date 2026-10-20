@@ -2,6 +2,7 @@ import { Server } from "@colyseus/core";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { Pool } from "pg";
 import { WorldRoom } from "./world-room.js";
+import { processEnemyRewardOutbox } from "./reward-outbox.js";
 
 export interface GameServerService {
   listen: (port: number, host: string) => Promise<void>;
@@ -30,6 +31,12 @@ export function createGameServer(databaseUrl: string): GameServerService {
     }),
   });
   gameServer.define("world", WorldRoom, { pool });
+  // Service-level polling continues even if the world room is disposed and resumes on restart.
+  const rewardOutboxTimer = setInterval(() => {
+    void processEnemyRewardOutbox(pool).catch((error: unknown) => {
+      console.error("Failed to process PvE reward outbox", error);
+    });
+  }, 1_000);
   let listening = false;
 
   return {
@@ -38,6 +45,7 @@ export function createGameServer(databaseUrl: string): GameServerService {
       listening = true;
     },
     close: async () => {
+      clearInterval(rewardOutboxTimer);
       try {
         if (listening) {
           await gameServer.gracefullyShutdown(false);

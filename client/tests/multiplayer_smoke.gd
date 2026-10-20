@@ -11,6 +11,7 @@ var character_a_id := ""
 var character_b_id := ""
 var panel_a_join_count := 0
 var combat_results: Array[Dictionary] = []
+var reward_events: Array[Dictionary] = []
 
 
 func _initialize() -> void:
@@ -35,6 +36,7 @@ func _run_multiplayer_smoke() -> void:
 	panel_a.world_joined.connect(_on_panel_a_world_joined)
 	panel_a.combat_result.connect(_on_panel_a_combat_result)
 	panel_b.combat_result.connect(_on_panel_a_combat_result)
+	panel_b.reward_granted.connect(_on_reward_granted)
 	await process_frame
 	panel_a.api_url_input.text = api_base
 	panel_b.api_url_input.text = api_base
@@ -173,6 +175,66 @@ func _run_multiplayer_smoke() -> void:
 	if not await _wait_for_enemy_health(panel_b, "enemy:ashen-wisp-01", enemy_health_before - 24):
 		_fail("The world snapshot did not replicate authoritative enemy damage.")
 		return
+
+	# Complete a real PvE defeat and prove the outbox settles and notifies the owning client.
+	var reward_deadline_ms := Time.get_ticks_msec() + 30_000
+	while Time.get_ticks_msec() < reward_deadline_ms:
+		var current_enemy := _find_enemy(panel_b.last_world_snapshot, "enemy:ashen-wisp-01")
+		if current_enemy.is_empty():
+			_fail("The Ashen Wisp disappeared before reward settlement could be verified.")
+			return
+		if int(current_enemy.get("health", 0)) <= 0:
+			break
+		await create_timer(2.1).timeout
+		result_count_before = combat_results.size()
+		panel_b.send_ability("astral-bolt", "enemy:ashen-wisp-01")
+		var followup_result: Dictionary = await _wait_for_combat_event(result_count_before, character_b_id, "enemy:ashen-wisp-01", "astral-bolt")
+		if followup_result.is_empty() or not bool(followup_result.get("accepted", false)):
+			continue
+		await _wait_for_enemy_health(panel_b, "enemy:ashen-wisp-01", int(current_enemy.get("health", 0)) - int(followup_result.get("damage", 0)))
+	if int(_find_enemy(panel_b.last_world_snapshot, "enemy:ashen-wisp-01").get("health", 1)) > 0:
+		_fail("The test character could not defeat the Ashen Wisp within the reward smoke timeout.")
+		return
+	var reward_deadline := Time.get_ticks_msec() + 10_000
+	while reward_events.is_empty() and Time.get_ticks_msec() < reward_deadline:
+		await create_timer(0.1).timeout
+	if reward_events.is_empty():
+		_fail("The defeated enemy did not produce a server-confirmed personal reward notification.")
+		return
+	var reward_payload: Dictionary = reward_events.back()
+	if int(reward_payload.get("experienceAwarded", 0)) <= 0 or int(reward_payload.get("silverAwarded", 0)) <= 0:
+		_fail("The personal PvE reward notification omitted expected XP or Silver.")
+		return
+
+	# Independently recover the same reward from the authenticated durable history API.
+	var history_request := HTTPRequest.new()
+	root.add_child(history_request)
+	var history_error := history_request.request(
+		"%s/v1/characters/%s/rewards" % [api_base, character_b_id],
+		PackedStringArray(["Authorization: Bearer %s" % panel_b.access_token])
+	)
+	if history_error != OK:
+		_fail("Could not request the authenticated persisted reward history.")
+		return
+	var history_response: Array = await history_request.request_completed
+	if int(history_response[1]) != 200:
+		_fail("The reward history endpoint did not return HTTP 200 after a PvE defeat.")
+		return
+	var history_json: Variant = JSON.parse_string((history_response[3] as PackedByteArray).get_string_from_utf8())
+	if not (history_json is Dictionary):
+		_fail("The reward history endpoint returned invalid JSON.")
+		return
+	var history_rewards: Array = history_json.get("rewards", [])
+	var matching_reward := false
+	for history_reward in history_rewards:
+		if String(history_reward.get("sourceId", "")) == "ashen-wisp" and int(history_reward.get("experienceAwarded", 0)) == int(reward_payload.get("experienceAwarded", 0)) and int(history_reward.get("silverAwarded", 0)) == int(reward_payload.get("silverAwarded", 0)):
+			matching_reward = true
+			break
+	if not matching_reward:
+		_fail("Persisted reward history did not recover the same XP/Silver award delivered to the client.")
+		return
+	history_request.queue_free()
+
 	var initial_b_x := float(second_state.get("position", {}).get("x", 0.0))
 	for _intent in range(8):
 		panel_b.send_move_intent(1.0, 0.0)
@@ -331,6 +393,10 @@ func _run_multiplayer_smoke() -> void:
 
 func _on_panel_a_combat_result(result: Dictionary) -> void:
 	combat_results.append(result.duplicate(true))
+
+
+func _on_reward_granted(reward: Dictionary) -> void:
+	reward_events.append(reward.duplicate(true))
 
 
 func _wait_for_combat_result(previous_count: int) -> bool:
