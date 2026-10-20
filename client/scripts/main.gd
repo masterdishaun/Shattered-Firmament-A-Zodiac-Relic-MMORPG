@@ -61,6 +61,7 @@ var correction_offset := Vector3.ZERO
 var prediction_accumulator := 0.0
 var nearby_relic_index := -1
 var inspected_relics: Dictionary = {}
+var world_streamer: Node
 var hud_refresh_elapsed := 0.0
 
 
@@ -69,6 +70,7 @@ func _ready() -> void:
 	_build_world_floor()
 	_build_faction_zones()
 	_build_player()
+	_build_world_streamer()
 	_build_camera()
 	_build_hud()
 	_move_to_faction_start(0)
@@ -495,6 +497,26 @@ func _build_player() -> void:
 	blade.rotation_degrees.z = -22.0
 	blade.material_override = _material(Color(0.65, 0.91, 0.9), 0.2, 0.25)
 	player.add_child(blade)
+
+
+
+func _build_world_streamer() -> void:
+	var manifest_path := "res://data/world/streaming-proof-manifest.json"
+	if not FileAccess.file_exists(manifest_path):
+		push_warning("World streaming manifest is missing; retaining the existing blockout world.")
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(manifest_path))
+	if not parsed is Dictionary:
+		push_warning("World streaming manifest is invalid; retaining the existing blockout world.")
+		return
+	var streamer_script: Script = load("res://scripts/world/world_streamer.gd")
+	if streamer_script == null:
+		push_warning("World streamer script is missing; retaining the existing blockout world.")
+		return
+	world_streamer = streamer_script.new()
+	world_streamer.name = "WorldStreamer"
+	world_streamer.configure(parsed, player)
+	add_child(world_streamer)
 
 
 func _build_camera() -> void:

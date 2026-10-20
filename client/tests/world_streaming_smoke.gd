@@ -25,22 +25,30 @@ func _run_smoke_test() -> void:
 
 	for frame in range(120):
 		await process_frame
-		if world.streamer.get_loaded_sector_count() == 3:
+		if world.streamer.get_loaded_sector_count() == 9:
 			break
-	if world.streamer.get_loaded_sector_count() != 3:
-		_fail("Initial asynchronous stream did not load the three adjacent sectors. Error: %s" % world.streamer.get_load_error())
+	if world.streamer.get_loaded_sector_count() != 9:
+		_fail("Initial asynchronous stream did not load the nine adjacent sectors. Error: %s" % world.streamer.get_load_error())
 		return
-	if world.streamer.get_loaded_sector_indices() != [-1, 0, 1]:
+	if world.streamer.get_loaded_sector_indices() != [-1, 0, 1] or not world.streamer.get_loaded_sector_keys().has("0:0"):
 		_fail("Initial sector ring is incorrect: %s" % [world.streamer.get_loaded_sector_indices()])
 		return
-	var central_sector: Node3D = world.streamer._loaded_sectors[0]
-	var west_sector: Node3D = world.streamer._loaded_sectors[-1]
-	var east_sector: Node3D = world.streamer._loaded_sectors[1]
+	var central_sector: Node3D = world.streamer._loaded_sectors["0:0"]
+	var west_sector: Node3D = world.streamer._loaded_sectors["-1:0"]
+	var east_sector: Node3D = world.streamer._loaded_sectors["1:0"]
+	var south_sector: Node3D = world.streamer._loaded_sectors["0:-1"]
+	var north_sector: Node3D = world.streamer._loaded_sectors["0:1"]
 	if not is_equal_approx(central_sector.global_position.x - 16.0, west_sector.global_position.x + 16.0):
 		_fail("West/central terrain sector edges do not meet.")
 		return
 	if not is_equal_approx(central_sector.global_position.x + 16.0, east_sector.global_position.x - 16.0):
 		_fail("Central/east terrain sector edges do not meet.")
+		return
+	if not is_equal_approx(central_sector.global_position.z - 16.0, south_sector.global_position.z + 16.0):
+		_fail("South/central terrain sector edges do not meet.")
+		return
+	if not is_equal_approx(central_sector.global_position.z + 16.0, north_sector.global_position.z - 16.0):
+		_fail("Central/north terrain sector edges do not meet.")
 		return
 	if central_sector.get_node_or_null("GroundCollision/GroundShape") == null:
 		_fail("A loaded sector is missing its ground collision shape.")
@@ -55,15 +63,28 @@ func _run_smoke_test() -> void:
 	if world.player != persistent_player or world.camera != persistent_camera or world.world_lifetime_marker != persistent_world_root_marker:
 		_fail("Crossing sector boundaries replaced a persistent world object.")
 		return
-	if world.streamer.get_loaded_sector_indices() != [1, 2, 3]:
+	if world.streamer.get_loaded_sector_indices() != [1, 2, 3] or not world.streamer.get_loaded_sector_keys().has("2:0"):
 		_fail("Eastward traversal did not stream the correct sector ring: %s" % [world.streamer.get_loaded_sector_indices()])
 		return
 
 	world.player.global_position = Vector3(-64.0, 0.85, 0.0)
 	for frame in range(8):
 		await process_frame
-	if world.streamer.get_loaded_sector_indices() != [-3, -2, -1]:
+	if world.streamer.get_loaded_sector_indices() != [-3, -2, -1] or not world.streamer.get_loaded_sector_keys().has("-2:0"):
 		_fail("Westward traversal did not stream the correct sector ring: %s" % [world.streamer.get_loaded_sector_indices()])
+		return
+	world.player.global_position = Vector3(0.0, 0.85, 64.0)
+	for frame in range(8):
+		await process_frame
+	if world.streamer.get_loaded_sector_count() != 9 or not world.streamer.get_loaded_sector_keys().has("0:2"):
+		_fail("Northward traversal did not stream the correct sector rows: %s" % [world.streamer.get_loaded_sector_keys()])
+		return
+
+	world.player.global_position = Vector3(0.0, 0.85, -64.0)
+	for frame in range(8):
+		await process_frame
+	if world.streamer.get_loaded_sector_count() != 9 or not world.streamer.get_loaded_sector_keys().has("0:-2"):
+		_fail("Southward traversal did not stream the correct sector rows: %s" % [world.streamer.get_loaded_sector_keys()])
 		return
 	if not world.camera.current:
 		_fail("Camera lost current status during sector changes.")

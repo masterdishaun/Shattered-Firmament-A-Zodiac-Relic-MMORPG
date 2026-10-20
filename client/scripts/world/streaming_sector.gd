@@ -3,11 +3,13 @@ extends Node3D
 const SECTOR_SIZE := 32.0
 
 var grid_x: int = 0
+var grid_z: int = 0
 
 
-func configure_sector(index: int) -> void:
-	grid_x = index
-	name = "Sector_%+d" % grid_x
+func configure_sector(index_x: int, index_z: int) -> void:
+	grid_x = index_x
+	grid_z = index_z
+	name = "Sector_%+d_%+d" % [grid_x, grid_z]
 	_build_ground()
 	_build_route_landmarks()
 
@@ -60,7 +62,7 @@ func _build_route_landmarks() -> void:
 
 	var label := Label3D.new()
 	label.name = "SectorLabel"
-	label.text = "SECTOR %s" % ("%+d" % grid_x)
+	label.text = "SECTOR %s / %s" % ["%+d" % grid_x, "%+d" % grid_z]
 	label.position = Vector3(0.0, 3.5, -7.0)
 	label.font_size = 48
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -91,12 +93,12 @@ func _sector_color() -> Color:
 		Color(0.19, 0.22, 0.27),
 		Color(0.15, 0.21, 0.25)
 	]
-	return palette[posmod(grid_x + 3, palette.size())]
+	return palette[posmod(grid_x + grid_z + 6, palette.size())]
 
 
 func _landmark_color() -> Color:
-	if grid_x < 0:
+	if grid_x < 0 or grid_z < 0:
 		return Color(0.45, 0.77, 0.72)
-	if grid_x > 0:
+	if grid_x > 0 or grid_z > 0:
 		return Color(0.87, 0.59, 0.30)
 	return Color(0.72, 0.80, 1.0)

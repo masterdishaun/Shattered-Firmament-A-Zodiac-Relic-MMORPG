@@ -160,10 +160,10 @@ The current implementation is a working prototype foundation, not the target ope
 - `client/scripts/main.gd` creates a primitive runtime blockout and fixed camera; it is not a finished terrain/streaming framework.
 - `server/src/zones.ts` defines five small rectangular blockout zones, and `server/src/world-room.ts` runs the current authoritative simulation in one Colyseus world room. This is not continent-scale spatial simulation or a production sharding system.
 - The current transition contract uses discrete zone IDs/gate checks; continuous sector streaming and broad region-boundary movement do not exist yet.
-- There is no full world manifest/sector streamer, authored continent terrain, production navmesh pipeline, complete NPC dialogue/quest runtime, or tested region-worker handoff.
+- The client now has a 2D 7-by-7 sector-streaming proof integrated into the existing persistent main-scene player/root. It still uses placeholder terrain and a prototype manifest; authored continent terrain, production navmesh pipeline, complete NPC dialogue/quest runtime, spatial interest management and tested region-worker handoff remain future work.
 - Existing authentication, character ownership, single-use join tickets, server-authoritative movement/combat/PvE and PostgreSQL persistence are valuable foundations to retain and extend.
 
-The correct next engineering task is **Stage 1: a measured sector-streaming prototype with a persistent player/session**, after the World Atlas is reviewed. Do not begin with a wholesale backend rewrite or generate the entire continent before that proof succeeds.
+The client-side Stage 1 streaming proof is implemented and smoke-tested. The next engineering task is **Stage 2: define and test the server region/transition contract**, including boundary validation and two-client continuity, before any worker handoff or continent-scale rollout. Do not begin with a wholesale backend rewrite or generate the entire continent before the server contract is proven.
 
 ## 10. Definition of done for a world region
 
@@ -181,13 +181,13 @@ A region can be called implemented only when all applicable items pass:
 
 ## Stage 1 prototype implementation (client-only)
 
-A bounded proof is available at client/scenes/world/streaming_prototype.tscn. It is intentionally separate from scenes/main.tscn, so the existing authentication, character selection, Colyseus client and local uncommitted edits are not disturbed.
+A standalone proof is available at client/scenes/world/streaming_prototype.tscn, and the streamer is also integrated into the existing main-scene root via client/scripts/main.gd. It references the existing player rather than replacing it; authentication, character selection, Colyseus client and existing local changes are retained.
 
-- client/data/world/streaming-proof-manifest.json declares seven adjacent 32-unit sector positions, a start anchor, streaming radius and unload radius.
-- scripts/world/world_streamer.gd loads the reusable sector scene resource asynchronously, instantiates the nearby three-sector ring, and releases sectors after they leave the unload radius.
+- client/data/world/streaming-proof-manifest.json declares a 7-by-7 grid of 32-unit sectors, a start anchor, streaming radius and unload radius.
+- scripts/world/world_streamer.gd loads the reusable sector scene resource asynchronously, instantiates the nearby 3-by-3 sector ring, and releases sectors after they leave the unload radius.
 - scripts/world/streaming_sector.gd creates original placeholder terrain, collision, route ribbons and visible sector markers. Adjacent floor collision boxes meet at the sector boundaries.
-- scripts/world/streaming_prototype.gd owns the player, orthographic camera and HUD outside streamed sectors. This prototype deliberately does not connect to the server; it does not claim network-session continuity or server-authoritative region handoff.
-- client/tests/world_streaming_smoke.gd checks the initial sector ring, east/west traversal, unload/reload behaviour and persistent root objects.
+- scripts/world/streaming_prototype.gd owns the player, orthographic camera and HUD outside streamed sectors. The standalone test scene does not connect to the server. In the main client, the same streamer lives under the existing root and follows its existing player while the Colyseus connection remains managed by the existing network panel. Server-authoritative region handoff is not implemented yet.
+- client/tests/world_streaming_smoke.gd checks the initial 3-by-3 sector grid, east/west/north/south traversal, unload/reload behaviour, sector seams/collision, and persistent root objects. The main prototype smoke test also checks integration with the existing player.
 
 Run the smoke test with the project's Godot 4.7.2 console executable: godot --headless --path client --script res://tests/world_streaming_smoke.gd
 
