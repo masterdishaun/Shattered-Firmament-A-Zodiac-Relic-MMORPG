@@ -24,6 +24,7 @@ import {
 import {
   ENEMY_DEFINITIONS,
   createWorldEnemies,
+  isNearbySupportEligible,
   stepEnemy,
   type PveEnemy,
 } from "./pve.js";
@@ -426,12 +427,15 @@ export class WorldRoom extends Room<
           for (const engagedEnemy of this.enemies.values()) {
             if (
               engagedEnemy.health > 0 &&
-              engagedEnemy.mapId === targetPlayer.mapId &&
-              engagedEnemy.aggroCharacterId === targetPlayer.characterId &&
-              Math.hypot(
-                engagedEnemy.x - targetPlayer.x,
-                engagedEnemy.y - targetPlayer.y,
-              ) <= 12
+              isNearbySupportEligible({
+                healer: { x: actor.x, y: actor.y, mapId: actor.mapId },
+                target: { ...targetPlayer, mapId: targetPlayer.mapId },
+                enemy: { ...engagedEnemy, mapId: engagedEnemy.mapId },
+                targetParticipated:
+                  this.enemyParticipants
+                    .get(engagedEnemy.id)
+                    ?.has(targetPlayer.characterId) ?? false,
+              })
             ) {
               this.recordEnemyParticipant(engagedEnemy, actor, 0, true);
             }

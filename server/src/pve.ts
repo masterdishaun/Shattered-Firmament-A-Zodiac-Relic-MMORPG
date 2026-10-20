@@ -1,4 +1,4 @@
-﻿export type EnemyArchetypeId =
+export type EnemyArchetypeId =
   "ashen-wisp" | "jadebound-sentinel" | "rift-stalker";
 export type EnemyAiState =
   "idle" | "approach" | "telegraph" | "recover" | "dead";
@@ -20,6 +20,31 @@ export interface PveEnemy {
   nextAttackAtMs: number;
   respawnAtMs: number;
 }
+export interface NearbySupportEligibilityInput {
+  healer: { x: number; y: number; mapId: string };
+  target: { x: number; y: number; mapId: string; characterId: string };
+  enemy: { x: number; y: number; mapId: string; aggroCharacterId: string };
+  targetParticipated: boolean;
+}
+
+/** Support healing qualifies only for an engaged ally and while both players are near that enemy. */
+export function isNearbySupportEligible(
+  input: NearbySupportEligibilityInput,
+): boolean {
+  const { healer, target, enemy } = input;
+  if (healer.mapId !== enemy.mapId || target.mapId !== enemy.mapId)
+    return false;
+  if (
+    !input.targetParticipated &&
+    enemy.aggroCharacterId !== target.characterId
+  )
+    return false;
+  return (
+    Math.hypot(target.x - enemy.x, target.y - enemy.y) <= 12 &&
+    Math.hypot(healer.x - enemy.x, healer.y - enemy.y) <= 12
+  );
+}
+
 export interface PvePlayer {
   characterId: string;
   mapId: string;
