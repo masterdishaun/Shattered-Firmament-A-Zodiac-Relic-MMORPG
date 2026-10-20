@@ -1,7 +1,8 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Pool } from "pg";
+import { createOpaqueToken, hashOpaqueToken } from "./security.js";
 import {
   grantDungeonCompletionRewards,
   ContentRewardError,
@@ -518,4 +519,81 @@ async function recordAuthoritativeBossDefeat(
     ...(input.random ? { random: input.random } : {}),
   });
   return { completed: true, reward };
+}
+
+export async function createDungeonRoomTicket(
+  pool: Pool,
+  input: { userId: string; characterId: string; instanceId: string },
+): Promise<{ joinTicket: string; expiresAt: string }> {
+  const token = createOpaqueToken();
+  const expiresAt = new Date(Date.now() + 60_000);
+  const result = await pool.query(
+    `INSERT INTO dungeon_room_tickets (id,token_hash,instance_id,user_id,character_id,expires_at)
+     SELECT $1,$2,di.id,di.user_id,di.character_id,$6
+     FROM dungeon_instances di
+     WHERE di.id=$3 AND di.user_id=$4 AND di.character_id=$5 AND di.status='active'
+     RETURNING id`,
+    [
+      randomUUID(),
+      hashOpaqueToken(token),
+      input.instanceId,
+      input.userId,
+      input.characterId,
+      expiresAt,
+    ],
+  );
+  if (!result.rowCount)
+    throw new DungeonRuntimeError("DUNGEON_INSTANCE_NOT_ACTIVE");
+  return { joinTicket: token, expiresAt: expiresAt.toISOString() };
+}
+
+export async function consumeDungeonRoomTicket(pool: Pool, rawTicket: string) {
+  if (
+    typeof rawTicket !== "string" ||
+    rawTicket.length < 32 ||
+    rawTicket.length > 200
+  )
+    throw new DungeonRuntimeError("DUNGEON_TICKET_INVALID");
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query<{
+      ticket_id: string;
+      user_id: string;
+      character_id: string;
+      instance_id: string;
+      dungeon_id: string;
+      instance_status: string;
+      class_id: "vanguard" | "mystic" | "support";
+    }>(
+      `SELECT t.id AS ticket_id,t.user_id,t.character_id,t.instance_id,di.dungeon_id,
+              di.status AS instance_status,c.class_id
+       FROM dungeon_room_tickets t
+       JOIN dungeon_instances di ON di.id=t.instance_id AND di.user_id=t.user_id AND di.character_id=t.character_id
+       JOIN characters c ON c.id=t.character_id AND c.user_id=t.user_id
+       WHERE t.token_hash=$1 AND t.consumed_at IS NULL AND t.expires_at>now()
+       FOR UPDATE OF t`,
+      [hashOpaqueToken(rawTicket)],
+    );
+    const ticket = result.rows[0];
+    if (!ticket || ticket.instance_status !== "active")
+      throw new DungeonRuntimeError("DUNGEON_TICKET_INVALID");
+    await client.query(
+      "UPDATE dungeon_room_tickets SET consumed_at=now() WHERE id=$1",
+      [ticket.ticket_id],
+    );
+    await client.query("COMMIT");
+    return {
+      userId: ticket.user_id,
+      characterId: ticket.character_id,
+      instanceId: ticket.instance_id,
+      dungeonId: ticket.dungeon_id,
+      classId: ticket.class_id,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }

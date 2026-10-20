@@ -13,6 +13,8 @@ import {
   recordTrustedQuestEvent,
   enterDungeonInstance,
   applyDungeonBossDamage,
+  createDungeonRoomTicket,
+  consumeDungeonRoomTicket,
 } from "./content-runtime.js";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
@@ -225,6 +227,41 @@ databaseSuite("authoritative quest and dungeon completion rewards", () => {
       [input.eventKey, characterId],
     );
     expect(events.rowCount).toBe(1);
+  });
+
+  it("issues single-use dungeon room tickets bound to the authenticated character and run", async () => {
+    const { userId, characterId } = await createCharacter("sovereign_sect", 5);
+    const instance = await enterDungeonInstance(pool, {
+      userId,
+      characterId,
+      dungeonId: "dungeon.underterrace-archive",
+      runKey: `ticket-run:${randomUUID()}`,
+    });
+    const ticket = await createDungeonRoomTicket(pool, {
+      userId,
+      characterId,
+      instanceId: instance.instanceId,
+    });
+    expect(ticket.joinTicket.length).toBeGreaterThanOrEqual(32);
+    const consumed = await consumeDungeonRoomTicket(pool, ticket.joinTicket);
+    expect(consumed).toMatchObject({
+      userId,
+      characterId,
+      instanceId: instance.instanceId,
+      dungeonId: "dungeon.underterrace-archive",
+      classId: "vanguard",
+    });
+    await expect(
+      consumeDungeonRoomTicket(pool, ticket.joinTicket),
+    ).rejects.toMatchObject({
+      code: "DUNGEON_TICKET_INVALID",
+    });
+    const stored = await pool.query<{ token_hash: string }>(
+      "SELECT token_hash FROM dungeon_room_tickets WHERE instance_id=$1",
+      [instance.instanceId],
+    );
+    expect(stored.rowCount).toBe(1);
+    expect(stored.rows[0]?.token_hash).not.toBe(ticket.joinTicket);
   });
 
   it("tracks authoritative dungeon boss defeat and persists one reward through replay", async () => {

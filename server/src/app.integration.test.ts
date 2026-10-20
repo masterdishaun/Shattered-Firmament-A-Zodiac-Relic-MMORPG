@@ -448,6 +448,11 @@ databaseSuite("authentication and character API integration", () => {
     });
     expect(entered.statusCode).toBe(200);
     expect(entered.json().instance.status).toBe("active");
+    expect(entered.json().room.name).toBe("dungeon");
+    expect(entered.json().room.options.instanceId).toBe(
+      entered.json().instance.instanceId,
+    );
+    expect(entered.json().room.joinTicket).toMatch(/^[A-Za-z0-9_-]{40,}$/);
     const progress = await migrationPool.query<{
       objective_progress: Record<string, number>;
     }>(

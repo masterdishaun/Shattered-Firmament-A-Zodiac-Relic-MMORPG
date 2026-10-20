@@ -16,6 +16,7 @@ import {
   QuestRuntimeError,
   DungeonRuntimeError,
   recordTrustedQuestEvent,
+  createDungeonRoomTicket,
 } from "./content-runtime.js";
 import {
   createOpaqueToken,
@@ -590,6 +591,11 @@ export const createApp = (
           dungeonId: request.params.dungeonId,
           runKey: request.body.runKey,
         });
+        const roomTicket = await createDungeonRoomTicket(pool!, {
+          userId: auth.id,
+          characterId: request.params.characterId,
+          instanceId: instance.instanceId,
+        });
         await recordTrustedQuestEvent(pool!, {
           eventKey: `dungeon-enter:${instance.instanceId}`,
           userId: auth.id,
@@ -597,7 +603,14 @@ export const createApp = (
           eventType: "dungeon_entered",
           targetId: request.params.dungeonId,
         });
-        return { instance };
+        return {
+          instance,
+          room: {
+            name: "dungeon",
+            options: { instanceId: instance.instanceId },
+            ...roomTicket,
+          },
+        };
       } catch (error) {
         if (
           error instanceof DungeonRuntimeError ||

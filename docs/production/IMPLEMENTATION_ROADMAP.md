@@ -317,3 +317,12 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Approved design direction is a large persistent open world, with region streaming/spatial interest management used for scale rather than turning ordinary traversal into a sequence of isolated instances.
 - Added `docs/design/OPEN_WORLD_AND_DUNGEON_PVP.md` as the design contract for safe-by-default PvE, opt-in War Mode, a proposed +20% eligible reward incentive, a marked safe-to-contested deep-zone boundary, faction-race instances with bounded indirect sabotage, and counterable tamed dungeon defences.
 - These are design decisions and acceptance criteria, not claims of implemented gameplay. The production sequence is to finish authoritative quest/dungeon foundations, then deliver one polished open-world vertical slice with a safe dungeon before expanding world regions and PvP modes.
+
+
+### Dedicated dungeon room implementation update (2026-10-20)
+
+- Added migration `0009_dungeon_room_tickets.sql`, storing only token hashes and binding each short-lived, single-use ticket to a user, character and active run.
+- Authenticated dungeon entry now returns the instance plus room name/options and a room ticket. The Colyseus `dungeon` room validates ticket ownership and run identity before admission.
+- Dungeon attacks submit only an encounter ID. The room determines damage from the authenticated character class, enforces a server-side cooldown, persists boss health/damage, and broadcasts authoritative encounter/reward outcomes. No client-supplied damage or defeat message is accepted.
+- Fresh disposable PostgreSQL verification currently passes: build, typecheck, lint, shared 19/19 and server 91/91 tests. Ticket consumption/replay and persisted boss/reward settlement are covered.
+- Remaining Phase 20 release gates: wire the Godot client into the dungeon room, implement actual dungeon movement/encounter presentation and meaningful combat/AI (current room uses a minimal server-owned class-damage prototype), run multiplayer E2E/reconnect tests, then perform release review. Keep PR #4 open until those gates pass.
