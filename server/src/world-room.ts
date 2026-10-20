@@ -147,9 +147,6 @@ export class WorldRoom extends Room<
     }, 30_000);
     this.clock.setInterval(() => {
       void this.flushRewardEnqueueRetries();
-      void processEnemyRewardOutbox(this.pool).catch((error: unknown) => {
-        console.error("Failed to process PvE reward outbox", error);
-      });
     }, 1_000);
     this.clock.setInterval(() => {
       void this.persistActivePositions();
