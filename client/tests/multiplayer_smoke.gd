@@ -378,6 +378,74 @@ func _run_multiplayer_smoke() -> void:
 		_fail("The departed character's remote avatar was not removed.")
 		return
 
+	# Exercise the actual Godot client -> API admission -> Colyseus dungeon -> persistent reward path.
+	panel_a._enter_faction_dungeon()
+	var dungeon_deadline_ms := Time.get_ticks_msec() + 15_000
+	while not panel_a.dungeon_connected and Time.get_ticks_msec() < dungeon_deadline_ms:
+		await create_timer(0.05).timeout
+	if not panel_a.dungeon_connected:
+		_fail("The client could not enter its faction dungeon: %s" % panel_a.status_label.text)
+		return
+	var dungeon_health := -1
+	var dungeon_completed := false
+	var dungeon_instance_before_reconnect: String = String(panel_a.dungeon_instance_id)
+	for _attack_index in range(24):
+		panel_a.send_dungeon_attack()
+		var attack_deadline_ms := Time.get_ticks_msec() + 5_000
+		while Time.get_ticks_msec() < attack_deadline_ms:
+			if panel_a.status_label.text.begins_with("Dungeon completed!"):
+				dungeon_completed = true
+				break
+			if panel_a.dungeon_encounter_health > 0 and panel_a.dungeon_encounter_health != dungeon_health:
+				dungeon_health = panel_a.dungeon_encounter_health
+				break
+			await create_timer(0.05).timeout
+		if dungeon_completed:
+			break
+		if dungeon_health <= 0:
+			_fail("Dungeon combat did not return server-owned boss health: %s" % panel_a.status_label.text)
+			return
+		if _attack_index == 1:
+			var dungeon_socket: WebSocketPeer = panel_a.game_client.get("_socket")
+			if dungeon_socket == null:
+				_fail("Dungeon socket unavailable for reconnect test.")
+				return
+			dungeon_socket.close(1000, "simulated dungeon network interruption")
+			panel_a.dungeon_connected = false
+			var dungeon_reconnected := false
+			var dungeon_reconnect_deadline := Time.get_ticks_msec() + 30_000
+			while Time.get_ticks_msec() < dungeon_reconnect_deadline:
+				if panel_a.dungeon_connected and panel_a.dungeon_instance_id == dungeon_instance_before_reconnect:
+					dungeon_reconnected = true
+					break
+				await create_timer(0.1).timeout
+			if not dungeon_reconnected:
+				_fail("Dungeon client did not resume the same persisted run after disconnect: %s" % panel_a.status_label.text)
+				return
+		await create_timer(1.0).timeout
+	if not dungeon_completed:
+		_fail("The faction dungeon did not settle a completion reward: %s; health=%d" % [panel_a.status_label.text, panel_a.dungeon_encounter_health])
+		return
+	var dungeon_history_request := HTTPRequest.new()
+	root.add_child(dungeon_history_request)
+	var dungeon_history_error := dungeon_history_request.request(
+		"%s/v1/characters/%s/rewards" % [api_base, character_a_id],
+		PackedStringArray(["Authorization: Bearer %s" % panel_a.access_token])
+	)
+	if dungeon_history_error != OK:
+		_fail("Could not query the persisted dungeon reward history.")
+		return
+	var dungeon_history_response: Array = await dungeon_history_request.request_completed
+	if int(dungeon_history_response[1]) != 200:
+		_fail("Dungeon reward history did not return HTTP 200.")
+		return
+	var dungeon_history_json: Variant = JSON.parse_string((dungeon_history_response[3] as PackedByteArray).get_string_from_utf8())
+	var dungeon_rewards: Array = dungeon_history_json.get("rewards", []) if dungeon_history_json is Dictionary else []
+	if dungeon_rewards.is_empty():
+		_fail("Dungeon completion did not persist a recoverable reward record.")
+		return
+	dungeon_history_request.queue_free()
+
 	panel_a._logout()
 	if not await _wait_for_panel_idle(panel_a):
 		_fail("The first client did not log out.")

@@ -189,6 +189,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_move_to_faction_start(2)
 		KEY_F:
 			_request_basic_attack()
+		KEY_G:
+			if network_panel != null and network_panel.has_method("send_dungeon_attack"):
+				network_panel.send_dungeon_attack()
 		KEY_E:
 			_interact_with_relic()
 		KEY_T:

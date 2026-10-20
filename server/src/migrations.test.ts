@@ -56,6 +56,9 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
     expect(first.applied).toContain("0004_pve_reward_item_definitions.sql");
     expect(first.applied).toContain("0005_character_loot_pity.sql");
     expect(first.applied).toContain("0006_enemy_reward_outbox.sql");
+    expect(first.applied).toContain("0007_dungeon_completion_events.sql");
+    expect(first.applied).toContain("0008_authoritative_content_runtime.sql");
+    expect(first.applied).toContain("0009_dungeon_room_tickets.sql");
 
     const tables = await pool.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
@@ -80,6 +83,13 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
       "character_reward_claims",
       "character_loot_pity",
       "enemy_reward_outbox",
+      "dungeon_completion_events",
+      "quest_progress_events",
+      "dungeon_instances",
+      "dungeon_encounter_events",
+      "dungeon_encounter_state",
+      "dungeon_damage_events",
+      "dungeon_room_tickets",
     ]) {
       expect(tableNames.has(table), `missing migrated table: ${table}`).toBe(
         true,
@@ -123,6 +133,8 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
     expect(second.skipped).toContain("0004_pve_reward_item_definitions.sql");
     expect(second.skipped).toContain("0005_character_loot_pity.sql");
     expect(second.skipped).toContain("0006_enemy_reward_outbox.sql");
+    expect(second.skipped).toContain("0007_dungeon_completion_events.sql");
+    expect(second.skipped).toContain("0008_authoritative_content_runtime.sql");
   });
 
   it("enforces case-insensitive account uniqueness and valid character factions", async () => {

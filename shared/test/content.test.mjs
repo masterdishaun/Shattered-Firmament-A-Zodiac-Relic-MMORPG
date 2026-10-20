@@ -105,6 +105,14 @@ test("quest catalog has valid schemas, ranges, references and an acyclic prerequ
     }
   }
   assertAcyclicQuestGraph(quests);
+  const rewardTables = await loadContent("reward-tables");
+  const rewardTableIds = new Set(rewardTables.map((table) => table.id));
+  for (const quest of quests) {
+    assert.ok(
+      rewardTableIds.has(quest.rewardTableId),
+      `${quest.id} references missing reward table ${quest.rewardTableId}`,
+    );
+  }
   assert.throws(
     () =>
       assertAcyclicQuestGraph([
@@ -120,6 +128,26 @@ test("quest catalog has valid schemas, ranges, references and an acyclic prerequ
       ]),
     /missing prerequisite/i,
   );
+});
+
+test("quest event triggers are explicit, paired, and reference known dungeon content", async () => {
+  const quests = await loadContent("quest-catalog");
+  const dungeons = await loadContent("dungeons");
+  const dungeonIds = new Set(dungeons.map((dungeon) => dungeon.id));
+  for (const quest of quests) {
+    for (const objective of quest.objectives) {
+      assert.equal(
+        Boolean(objective.eventType),
+        Boolean(objective.targetId),
+        `${objective.id} must define both eventType and targetId`,
+      );
+      if (objective.eventType === "dungeon_entered")
+        assert.ok(
+          dungeonIds.has(objective.targetId),
+          `${objective.id} references an unknown dungeon`,
+        );
+    }
+  }
 });
 
 test("character archetypes and item definitions satisfy their schemas", async () => {

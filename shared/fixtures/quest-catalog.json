@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "id": "sovereign.ward-that-lied",
     "version": 1,
@@ -26,7 +26,9 @@
         "id": "sovereign.ward-that-lied.obj3",
         "description": "Enter the Underterrace Archive",
         "targetCount": 1,
-        "optional": false
+        "optional": false,
+        "eventType": "dungeon_entered",
+        "targetId": "dungeon.underterrace-archive"
       },
       {
         "id": "sovereign.ward-that-lied.obj4",
@@ -66,11 +68,13 @@
         "id": "ashen.shard-that-sang.obj3",
         "description": "Enter the Cinder Vault",
         "targetCount": 1,
-        "optional": false
+        "optional": false,
+        "eventType": "dungeon_entered",
+        "targetId": "dungeon.cinder-vault"
       },
       {
         "id": "ashen.shard-that-sang.obj4",
-        "description": "Submit evidence to the workers\u0027 council",
+        "description": "Submit evidence to the workers' council",
         "targetCount": 1,
         "optional": false
       }
@@ -92,7 +96,7 @@
     "objectives": [
       {
         "id": "concord.forest-that-remembered.obj1",
-        "description": "Follow the spirit-beast\u0027s memory trail",
+        "description": "Follow the spirit-beast's memory trail",
         "targetCount": 1,
         "optional": false
       },
@@ -106,7 +110,9 @@
         "id": "concord.forest-that-remembered.obj3",
         "description": "Enter the Drowned Shrine",
         "targetCount": 1,
-        "optional": false
+        "optional": false,
+        "eventType": "dungeon_entered",
+        "targetId": "dungeon.drowned-shrine"
       },
       {
         "id": "concord.forest-that-remembered.obj4",
@@ -224,7 +230,7 @@
   {
     "id": "sovereign.unsent-letters",
     "version": 1,
-    "title": "The Marshal\u0027s Unsent Letters",
+    "title": "The Marshal's Unsent Letters",
     "availability": "faction",
     "factionIds": ["sovereign_sect"],
     "levelMin": 16,
@@ -438,7 +444,7 @@
     "objectives": [
       {
         "id": "concord.beast-tool.obj1",
-        "description": "Investigate the fox spirit\u0027s attacks",
+        "description": "Investigate the fox spirit's attacks",
         "targetCount": 1,
         "optional": false
       },
@@ -512,7 +518,7 @@
       },
       {
         "id": "concord.quiet-cost.obj2",
-        "description": "Test the ritual\u0027s boundary",
+        "description": "Test the ritual's boundary",
         "targetCount": 1,
         "optional": false
       },
@@ -683,7 +689,7 @@
       },
       {
         "id": "shared.feast-without-flags.obj3",
-        "description": "Expose the quartermaster\u0027s profiteering",
+        "description": "Expose the quartermaster's profiteering",
         "targetCount": 1,
         "optional": false
       }
@@ -695,7 +701,7 @@
   {
     "id": "shared.guardian-name",
     "version": 1,
-    "title": "The Guardian\u0027s First Name",
+    "title": "The Guardian's First Name",
     "availability": "shared",
     "levelMin": 45,
     "levelMax": 55,
@@ -710,7 +716,7 @@
       },
       {
         "id": "shared.guardian-name.obj2",
-        "description": "Reconstruct the Guardian\u0027s original name",
+        "description": "Reconstruct the Guardian's original name",
         "targetCount": 1,
         "optional": false
       },
@@ -749,7 +755,7 @@
       },
       {
         "id": "shared.auction-tomorrow.obj3",
-        "description": "Expose the broker\u0027s manipulation",
+        "description": "Expose the broker's manipulation",
         "targetCount": 1,
         "optional": false
       }
@@ -836,7 +842,7 @@
     "objectives": [
       {
         "id": "shared.last-unwritten-page.obj1",
-        "description": "Recover Shen Veyu\u0027s journal fragments",
+        "description": "Recover Shen Veyu's journal fragments",
         "targetCount": 1,
         "optional": false
       },

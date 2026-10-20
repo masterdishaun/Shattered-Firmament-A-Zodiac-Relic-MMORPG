@@ -289,8 +289,46 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Expanded support eligibility so a healer can qualify by healing an ally who has participated in that enemy encounter, even when the enemy is targeting a different player. The target and healer must both be within 12 world units of the enemy and all entities must be in the same map. This preserves nearby-combat relevance and avoids awarding support credit for distant or uninvolved healing.
 - Added unit coverage for valid support, uninvolved targets, out-of-range healers and cross-map targets. Party membership is not yet a first-class game system; this eligibility uses actual encounter participation and proximity rather than assuming a party exists.
 
-
 ## Progress log - Phase 19 end-to-end reward recovery verification
 
 - Extended the two-client Godot multiplayer smoke test to defeat a live server-owned Ashen Wisp, require a server-confirmed personal XP/Silver reward event, then independently query the authenticated reward-history API and assert the same XP/Silver claim is durably recoverable.
 - Ran against a fresh disposable PostgreSQL 17 cluster with migrations `0001` through `0006` applied, and isolated local API/game ports. Result: `GODOT_MULTIPLAYER_SMOKE=PASS`; database inspection confirmed one completed outbox event, one unique reward claim, 84 XP and 4 Silver awarded. No inventory item was expected in this random roll. The isolated local game/API service and disposable PostgreSQL cluster were stopped and removed after verification. No production services/data were used.
+
+## Phase 20 - Quest and dungeon reward settlement (in progress)
+
+- Added guaranteed XP/Silver reward tables for all 25 quest definitions. These values are provisional balance baselines; content validation now fails if any quest references a missing reward table.
+- Added authenticated `POST /v1/characters/:characterId/quests/:questId/claim`. It reads server-stored quest completion/objective progress, enforces required objective counts, prerequisite completion and faction access, and never accepts reward quantities from the client. Claims are keyed by quest ID/content version and settle XP, Silver ledger, item instances and claim history in one transaction.
+- Added internal server-side dungeon completion settlement with an explicit completion event key, required encounter validation, faction/level checks, durable completion evidence and atomic reward claims. The client cannot create a dungeon completion event through an HTTP endpoint; the authoritative dungeon runtime must call this service only after it verifies the required encounters.
+- Added migration `0007_dungeon_completion_events.sql` and PostgreSQL integration tests for concurrent quest claim replay, incomplete objectives, faction locks, dungeon replay, event-key reuse and incomplete encounter sets. Local build/typecheck/lint pass; full test suite passes with shared 18/18 and server 87/87 against a fresh disposable PostgreSQL 17 test database.
+- Dungeon reward settlement is ready for the future dungeon runtime, but boss/instance gameplay itself is not yet implemented. No production services or data were touched.
+
+
+### Phase 20 authoritative runtime follow-up (in progress)
+
+- Added migration `0008_authoritative_content_runtime.sql`: idempotent quest-event ledger, persistent dungeon instances, and unique per-instance encounter defeat records.
+- Added authenticated quest start and dungeon-entry APIs. Quest progress changes only through an internal trusted-event function; there is no client endpoint to submit arbitrary objective progress or completion. Objective event mappings are explicit in content metadata, and duplicate event keys are ignored.
+- Added internal dungeon instance admission with character ownership, level/faction access checks, run-key replay handling, per-instance boss health, idempotent server-calculated damage events, encounter tracking, and boss-defeat settlement wired to the existing atomic reward service. A completed instance can retry settlement after a transient reward-service failure without duplicating rewards.
+- Added database integration tests for quest start/progress idempotency and dungeon boss/reward replay, plus migration assertions and content checks for configured event metadata.
+- Remaining release gates: author server-backed triggers for the other narrative objectives; connect the server-owned boss health/damage service to a dedicated Colyseus dungeon room and live combat intents (the current world room only simulates the existing overworld enemy roster); test the complete Godot client-to-server dungeon loop against disposable PostgreSQL; verify reward history/inventory/currency persistence; then review CI and merge only if every gate passes. No production changes.
+
+
+### World-scale and dungeon PvP design decision (2026-10-20)
+
+- Approved design direction is a large persistent open world, with region streaming/spatial interest management used for scale rather than turning ordinary traversal into a sequence of isolated instances.
+- Added `docs/design/OPEN_WORLD_AND_DUNGEON_PVP.md` as the design contract for safe-by-default PvE, opt-in War Mode, a proposed +20% eligible reward incentive, a marked safe-to-contested deep-zone boundary, faction-race instances with bounded indirect sabotage, and counterable tamed dungeon defences.
+- These are design decisions and acceptance criteria, not claims of implemented gameplay. The production sequence is to finish authoritative quest/dungeon foundations, then deliver one polished open-world vertical slice with a safe dungeon before expanding world regions and PvP modes.
+
+
+### Dedicated dungeon room implementation update (2026-10-20)
+
+- Added migration `0009_dungeon_room_tickets.sql`, storing only token hashes and binding each short-lived, single-use ticket to a user, character and active run.
+- Authenticated dungeon entry now returns the instance plus room name/options and a room ticket. The Colyseus `dungeon` room validates ticket ownership and run identity before admission.
+- Dungeon attacks submit only an encounter ID. The room determines damage from the authenticated character class, enforces a server-side cooldown, persists boss health/damage, and broadcasts authoritative encounter/reward outcomes. No client-supplied damage or defeat message is accepted.
+- Fresh disposable PostgreSQL verification currently passes: build, typecheck, lint, shared 19/19 and server 91/91 tests. Ticket consumption/replay and persisted boss/reward settlement are covered.
+- Remaining Phase 20 release gates: wire the Godot client into the dungeon room, implement actual dungeon movement/encounter presentation and meaningful combat/AI (current room uses a minimal server-owned class-damage prototype), run multiplayer E2E/reconnect tests, then perform release review. Keep PR #4 open until those gates pass.
+
+- Godot client integration update: the account panel now offers **Enter Faction Story Dungeon**, chooses the character's faction dungeon, requests authenticated server admission, joins the filtered Colyseus dungeon room using its one-time ticket, and sends server-validated encounter attack intents with `G`. Server response status/health/reward results are displayed. Headless editor scan and prototype smoke passed after this integration. Visual dungeon scene/AI, movement and multiplayer end-to-end/reconnect tests remain release gates.
+
+- Dungeon end-to-end verification: `client/tests/multiplayer_smoke.gd` now exercises the actual Godot client through authenticated dungeon admission, Colyseus room join, repeated boss attacks, server-side completion reward settlement, and reward-history recovery. Local run passed (`GODOT_MULTIPLAYER_SMOKE=PASS`) against a disposable PostgreSQL 17 database. A real payload-shape bug was fixed: dungeon messages are flat, so the client now falls back to the message envelope when no `payload` field exists. Build, typecheck, lint, shared tests (19/19), server tests (91/91), Godot editor scan and prototype smoke passed. Dungeon reconnect/resume and polished encounter presentation remain release gates.
+
+- Dungeon reconnect/resume now preserves the run key and dungeon identity. After a transport drop the client requests a fresh single-use ticket for the existing run, rejoins the same instance and continues from PostgreSQL-persisted encounter health. The expanded full multiplayer Godot smoke passed end-to-end, including a forced dungeon socket interruption, same-instance rejoin, boss defeat, completion settlement and persisted reward-history recovery (`GODOT_MULTIPLAYER_SMOKE=PASS`). Disposable PostgreSQL cluster was stopped and removed after verification.

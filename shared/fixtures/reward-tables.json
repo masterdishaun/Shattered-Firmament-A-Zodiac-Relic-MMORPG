@@ -254,5 +254,605 @@
         "badLuckGroupId": "bad-luck.dungeon-boss.rare"
       }
     ]
+  },
+  {
+    "id": "rewards.sovereign.ward_that_lied",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.sovereign.ward-that-lied.xp",
+        "rewardType": "experience",
+        "quantityMin": 550,
+        "quantityMax": 550,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.sovereign.ward-that-lied.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 12,
+        "quantityMax": 12,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.ashen.shard_that_sang",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.ashen.shard-that-sang.xp",
+        "rewardType": "experience",
+        "quantityMin": 550,
+        "quantityMax": 550,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.ashen.shard-that-sang.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 12,
+        "quantityMax": 12,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.concord.forest_that_remembered",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.concord.forest-that-remembered.xp",
+        "rewardType": "experience",
+        "quantityMin": 550,
+        "quantityMax": 550,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.concord.forest-that-remembered.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 12,
+        "quantityMax": 12,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.sovereign.names_we_sealed",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.sovereign.names-we-sealed.xp",
+        "rewardType": "experience",
+        "quantityMin": 750,
+        "quantityMax": 750,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.sovereign.names-we-sealed.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 20,
+        "quantityMax": 20,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.sovereign.price_quiet_street",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.sovereign.price-quiet-street.xp",
+        "rewardType": "experience",
+        "quantityMin": 900,
+        "quantityMax": 900,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.sovereign.price-quiet-street.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 26,
+        "quantityMax": 26,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.sovereign.sword_unarmed",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.sovereign.sword-unarmed.xp",
+        "rewardType": "experience",
+        "quantityMin": 1100,
+        "quantityMax": 1100,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.sovereign.sword-unarmed.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 34,
+        "quantityMax": 34,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.sovereign.unsent_letters",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.sovereign.unsent-letters.xp",
+        "rewardType": "experience",
+        "quantityMin": 1300,
+        "quantityMax": 1300,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.sovereign.unsent-letters.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 42,
+        "quantityMax": 42,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.ashen.last_shift",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.ashen.last-shift.xp",
+        "rewardType": "experience",
+        "quantityMin": 750,
+        "quantityMax": 750,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.ashen.last-shift.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 20,
+        "quantityMax": 20,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.ashen.market_memories",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.ashen.market-memories.xp",
+        "rewardType": "experience",
+        "quantityMin": 900,
+        "quantityMax": 900,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.ashen.market-memories.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 26,
+        "quantityMax": 26,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.ashen.free_hand",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.ashen.free-hand.xp",
+        "rewardType": "experience",
+        "quantityMin": 1100,
+        "quantityMax": 1100,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.ashen.free-hand.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 34,
+        "quantityMax": 34,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.ashen.beast_furnace",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.ashen.beast-furnace.xp",
+        "rewardType": "experience",
+        "quantityMin": 1300,
+        "quantityMax": 1300,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.ashen.beast-furnace.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 42,
+        "quantityMax": 42,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.concord.names_river",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.concord.names-river.xp",
+        "rewardType": "experience",
+        "quantityMin": 750,
+        "quantityMax": 750,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.concord.names-river.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 20,
+        "quantityMax": 20,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.concord.beast_tool",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.concord.beast-tool.xp",
+        "rewardType": "experience",
+        "quantityMin": 900,
+        "quantityMax": 900,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.concord.beast-tool.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 26,
+        "quantityMax": 26,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.concord.healer_choice",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.concord.healer-choice.xp",
+        "rewardType": "experience",
+        "quantityMin": 1100,
+        "quantityMax": 1100,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.concord.healer-choice.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 34,
+        "quantityMax": 34,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.concord.quiet_cost",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.concord.quiet-cost.xp",
+        "rewardType": "experience",
+        "quantityMin": 1300,
+        "quantityMax": 1300,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.concord.quiet-cost.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 42,
+        "quantityMax": 42,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.missing_roads",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.missing-roads.xp",
+        "rewardType": "experience",
+        "quantityMin": 1550,
+        "quantityMax": 1550,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.missing-roads.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 52,
+        "quantityMax": 52,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.price_ashen_jade",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.price-ashen-jade.xp",
+        "rewardType": "experience",
+        "quantityMin": 1750,
+        "quantityMax": 1750,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.price-ashen-jade.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 60,
+        "quantityMax": 60,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.twelve_plates",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.twelve-plates.xp",
+        "rewardType": "experience",
+        "quantityMin": 2000,
+        "quantityMax": 2000,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.twelve-plates.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 70,
+        "quantityMax": 70,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.hunter_returned",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.hunter-returned.xp",
+        "rewardType": "experience",
+        "quantityMin": 2250,
+        "quantityMax": 2250,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.hunter-returned.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 80,
+        "quantityMax": 80,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.feast_without_flags",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.feast-without-flags.xp",
+        "rewardType": "experience",
+        "quantityMin": 2500,
+        "quantityMax": 2500,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.feast-without-flags.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 90,
+        "quantityMax": 90,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.guardian_name",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.guardian-name.xp",
+        "rewardType": "experience",
+        "quantityMin": 2750,
+        "quantityMax": 2750,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.guardian-name.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 100,
+        "quantityMax": 100,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.auction_tomorrow",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.auction-tomorrow.xp",
+        "rewardType": "experience",
+        "quantityMin": 3250,
+        "quantityMax": 3250,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.auction-tomorrow.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 120,
+        "quantityMax": 120,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.village_voted_no",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.village-voted-no.xp",
+        "rewardType": "experience",
+        "quantityMin": 3500,
+        "quantityMax": 3500,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.village-voted-no.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 130,
+        "quantityMax": 130,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.twelve_shadows",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.twelve-shadows.xp",
+        "rewardType": "experience",
+        "quantityMin": 4000,
+        "quantityMax": 4000,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.twelve-shadows.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 150,
+        "quantityMax": 150,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
+  },
+  {
+    "id": "rewards.shared.last_unwritten_page",
+    "version": 1,
+    "rollPolicy": "guaranteed",
+    "entries": [
+      {
+        "id": "entry.shared.last-unwritten-page.xp",
+        "rewardType": "experience",
+        "quantityMin": 4750,
+        "quantityMax": 4750,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.shared.last-unwritten-page.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 180,
+        "quantityMax": 180,
+        "chance": 1,
+        "tradeable": false
+      }
+    ]
   }
 ]

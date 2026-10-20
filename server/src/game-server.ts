@@ -2,6 +2,7 @@ import { Server } from "@colyseus/core";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { Pool } from "pg";
 import { WorldRoom } from "./world-room.js";
+import { DungeonRoom } from "./dungeon-room.js";
 import { processEnemyRewardOutbox } from "./reward-outbox.js";
 
 export interface GameServerService {
@@ -31,6 +32,7 @@ export function createGameServer(databaseUrl: string): GameServerService {
     }),
   });
   gameServer.define("world", WorldRoom, { pool });
+  gameServer.define("dungeon", DungeonRoom, { pool }).filterBy(["instanceId"]);
   // Service-level polling continues even if the world room is disposed and resumes on restart.
   const rewardOutboxTimer = setInterval(() => {
     void processEnemyRewardOutbox(pool).catch((error: unknown) => {
