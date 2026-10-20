@@ -107,11 +107,33 @@ databaseSuite("durable progression and personal reward grants", () => {
     expect(claims.rows[0]?.loot[0]?.itemId).toBe(
       "material.ashen-jade-fragment",
     );
+    const inventory = await pool.query<{
+      definition_id: string;
+      definition_version: number;
+      owner_character_id: string;
+      quantity: number;
+      bound_to_user_id: string | null;
+    }>(
+      `SELECT definition_id, definition_version, owner_character_id, quantity, bound_to_user_id
+       FROM item_instances WHERE owner_character_id = $1`,
+      [characterId],
+    );
+    expect(inventory.rows).toEqual([
+      expect.objectContaining({
+        definition_id: "material.ashen-jade-fragment",
+        definition_version: 1,
+        owner_character_id: characterId,
+        quantity: 1,
+        bound_to_user_id: null,
+      }),
+    ]);
+
     const ledger = await pool.query(
       "SELECT id FROM currency_ledger WHERE user_id = $1 AND reason = 'enemy_defeat'",
       [userId],
     );
     expect(ledger.rowCount).toBe(1);
+    expect(inventory.rowCount).toBe(1);
   });
 
   it("persists level-ups when a reward crosses the next-level threshold", async () => {

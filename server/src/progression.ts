@@ -141,6 +141,50 @@ export async function grantEnemyDefeatRewards(
       };
     }
 
+    // Materialize the recorded loot inside the same transaction as the claim.
+    // Item definition policy is authoritative; reward payloads cannot override it.
+    for (const item of rewards.loot) {
+      const definitionResult = await client.query<{
+        content_version: number;
+        tradeable: boolean;
+        bind_policy: string;
+      }>(
+        `SELECT content_version, tradeable, bind_policy
+         FROM item_definitions WHERE id = $1
+         ORDER BY content_version DESC LIMIT 1`,
+        [item.itemId],
+      );
+      const definition = definitionResult.rows[0];
+      if (!definition)
+        throw new Error(`REWARD_ITEM_DEFINITION_MISSING:${item.itemId}`);
+      if (definition.tradeable !== item.tradeable)
+        throw new Error(`REWARD_ITEM_TRADEABILITY_MISMATCH:${item.itemId}`);
+      const bindsOnPickup = [
+        "bind_on_pickup",
+        "account_bound",
+        "character_bound",
+      ].includes(definition.bind_policy);
+      if (
+        (definition.tradeable && bindsOnPickup) ||
+        (!definition.tradeable && definition.bind_policy === "unbound")
+      )
+        throw new Error(`REWARD_ITEM_BIND_POLICY_MISMATCH:${item.itemId}`);
+
+      await client.query(
+        `INSERT INTO item_instances
+          (id, definition_id, definition_version, owner_character_id, quantity, bound_to_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          randomUUID(),
+          item.itemId,
+          definition.content_version,
+          input.characterId,
+          item.quantity,
+          bindsOnPickup ? input.userId : null,
+        ],
+      );
+    }
+
     const nextExperience = Number(character.experience) + rewards.experience;
     if (!Number.isSafeInteger(nextExperience))
       throw new Error("EXPERIENCE_OVERFLOW");
