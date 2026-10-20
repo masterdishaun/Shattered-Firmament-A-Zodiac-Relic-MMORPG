@@ -255,7 +255,6 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Verification: final `corepack pnpm build`, `corepack pnpm typecheck`, `corepack pnpm test` and `corepack pnpm lint` all passed against a fresh disposable PostgreSQL 17 database; shared schema/content tests passed 18/18 and server tests passed 73/73, including all database-backed migration/reward/API tests. `git diff --check` passed. The disposable cluster was stopped and removed. Godot headless validation was not run because the configured Godot 4.7.2 executable was not present at its expected path on the device; rerun the editor scan and prototype smoke before merging.
 - Remaining after the inventory follow-up: level-difference/trivial-enemy diminishing returns, quest/dungeon reward claims, persistent bad-luck protection, more complete party/support eligibility, and durable retry recovery if the database is unavailable during a kill. All values remain provisional; no production data or deployment was touched.
 
-
 ## Progress log - Phase 19 inventory settlement follow-up
 
 - Added migration `0004_pve_reward_item_definitions.sql` to ensure the Ashen-Jade Fragment has a versioned, unbound, tradeable item definition without overwriting an existing definition.
@@ -264,7 +263,6 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Verification: build and typecheck passed; lint passed after formatting; full test suite passed against a fresh disposable PostgreSQL 17 cluster (shared 18/18, server 73/73 including database-backed migration, reward and API integration tests); `git diff --check` passed. Godot 4.7.2 headless editor filesystem scan and main-scene smoke run both exited successfully. The disposable test cluster was stopped and its data directory and log were removed after verification.
 - Still not complete: persistent bad-luck protection, quest/dungeon reward claims, durable reward retry after database failure, and expanded party/support eligibility. PR #3 remains open pending remaining gates; no production service or database was touched.
 
-
 ## Progress log - Phase 19 anti-farming XP follow-up
 
 - Added explicit provisional levels to the three Ashen Frontier enemy archetypes (Ashen Wisp 1, Rift Stalker 2, Jadebound Sentinel 3) and feed the server-owned level into reward settlement.
@@ -272,10 +270,16 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - XP scaling is applied before the reward claim is persisted, so the claim history records the actual XP credited. Added unit and PostgreSQL integration coverage for thresholds, validation, persisted reduced XP, and unchanged Silver settlement.
 - All enemy levels and multipliers are provisional balance values for later simulation/playtesting. Persistent bad-luck protection, quest/dungeon rewards, durable retry after database failure, and expanded party/support eligibility remain open.
 
-
 ## Progress log - Phase 19 persistent loot pity
 
 - Added `character_loot_pity`, keyed by character and protected material, with a bounded consecutive-miss counter. A fragment is guaranteed after nine recorded misses (the tenth eligible defeat); a natural or guaranteed drop resets the counter.
 - The pity read, unique reward claim, pity update, item materialization, XP, Silver, and currency ledger remain in one PostgreSQL transaction. Character-row locking serializes grants for the same character; duplicate event replays return before the counter can advance.
 - Added migration assertions and PostgreSQL integration coverage for miss tracking, forced drop/reset, and concurrent duplicate replay. Pity currently protects only the Ashen-Jade Fragment; this threshold is provisional for simulation/playtesting.
 - Durable retry after database failure and expanded party/support eligibility remain open. No production service or database was touched.
+
+## Progress log - Phase 19 durable reward outbox follow-up
+
+- Added migration `0006_enemy_reward_outbox.sql` and a PostgreSQL-backed reward outbox. Enemy reward events are persisted before settlement, uniquely keyed per event and character, and processed in bounded batches using `FOR UPDATE SKIP LOCKED` plus a 60-second lease. Expired leases are reclaimable after a worker/process interruption; settlement remains idempotent through the existing reward-claim unique key.
+- Added bounded exponential retry scheduling and error recording for failed settlement. If PostgreSQL is unavailable before the event can be inserted, the room retains the event in memory and retries every second while that process remains alive; once the row is inserted, it survives restarts. This pre-insert outage window is an explicit limitation, not a claim of full crash-proof persistence. Offline/reconnect clients can recover settled claims from the authenticated reward-history endpoint.
+- Added PostgreSQL integration coverage for outbox settlement, expired-lease recovery, worker replay safety and migration idempotency. Local build, typecheck, lint, and full test suite passed against a fresh disposable PostgreSQL 17 database (shared 18/18, server 80/80). No production service or database was touched.
+- Remaining before PR #3 can be considered for merge: expanded party/support eligibility review, interactive Godot gameplay smoke test, and final release-gate review.

@@ -4,6 +4,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { runMigrations } from "./migrations.js";
 import { grantEnemyDefeatRewards } from "./progression.js";
+import {
+  enqueueEnemyReward,
+  processEnemyRewardOutbox,
+} from "./reward-outbox.js";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 const databaseSuite = testDatabaseUrl ? describe : describe.skip;
@@ -326,5 +330,50 @@ databaseSuite("durable progression and personal reward grants", () => {
         random: () => 0,
       }),
     ).rejects.toThrow("REWARD_CHARACTER_NOT_FOUND");
+  });
+  it("recovers persisted pending reward events through the durable outbox", async () => {
+    const { userId, characterId } = await createCharacter();
+    const eventKey = `outbox-recovery:${randomUUID()}`;
+    await enqueueEnemyReward(pool, {
+      eventKey,
+      userId,
+      characterId,
+      archetype: "rift-stalker",
+      enemyLevel: 2,
+    });
+    const pending = await pool.query<{ status: string }>(
+      "SELECT status FROM enemy_reward_outbox WHERE event_key = $1 AND character_id = $2",
+      [eventKey, characterId],
+    );
+    expect(pending.rows[0]?.status).toBe("pending");
+
+    // Simulate a worker process dying after claiming the row; the expired lease must recover it.
+    await pool.query(
+      `UPDATE enemy_reward_outbox SET status = 'processing', lease_until = now() - interval '1 second'
+       WHERE event_key = $1 AND character_id = $2`,
+      [eventKey, characterId],
+    );
+    expect(await processEnemyRewardOutbox(pool)).toBe(1);
+    const completed = await pool.query<{ status: string; attempts: number }>(
+      "SELECT status, attempts FROM enemy_reward_outbox WHERE event_key = $1 AND character_id = $2",
+      [eventKey, characterId],
+    );
+    expect(completed.rows[0]).toMatchObject({
+      status: "completed",
+      attempts: 1,
+    });
+    const claims = await pool.query(
+      "SELECT id FROM character_reward_claims WHERE event_key = $1 AND character_id = $2",
+      [eventKey, characterId],
+    );
+    expect(claims.rowCount).toBe(1);
+
+    // Replaying the worker is safe and cannot grant a second claim.
+    expect(await processEnemyRewardOutbox(pool)).toBe(0);
+    const replayClaims = await pool.query(
+      "SELECT id FROM character_reward_claims WHERE event_key = $1 AND character_id = $2",
+      [eventKey, characterId],
+    );
+    expect(replayClaims.rowCount).toBe(1);
   });
 });

@@ -27,7 +27,11 @@ import {
   stepEnemy,
   type PveEnemy,
 } from "./pve.js";
-import { grantEnemyDefeatRewards } from "./progression.js";
+import {
+  enqueueEnemyReward,
+  processEnemyRewardOutbox,
+  type EnemyRewardOutboxInput,
+} from "./reward-outbox.js";
 import {
   FACTION_START_ZONE,
   isPositionWalkable,
@@ -102,6 +106,10 @@ export class WorldRoom extends Room<
   private readonly authenticatedClients = new Map<string, ConsumedJoinTicket>();
   private readonly playerStates = new Map<string, WorldPlayerRuntime>();
   private readonly enemies = new Map<string, PveEnemy>();
+  private readonly rewardEnqueueRetries = new Map<
+    string,
+    EnemyRewardOutboxInput
+  >();
   private readonly enemyParticipants = new Map<
     string,
     Map<string, EnemyRewardParticipant>
@@ -136,6 +144,12 @@ export class WorldRoom extends Room<
     this.clock.setInterval(() => {
       void this.renewActiveLeases();
     }, 30_000);
+    this.clock.setInterval(() => {
+      void this.flushRewardEnqueueRetries();
+      void processEnemyRewardOutbox(this.pool).catch((error: unknown) => {
+        console.error("Failed to process PvE reward outbox", error);
+      });
+    }, 1_000);
     this.clock.setInterval(() => {
       void this.persistActivePositions();
     }, POSITION_CHECKPOINT_INTERVAL_MS);
@@ -402,7 +416,7 @@ export class WorldRoom extends Room<
           this.enemyParticipants.delete(enemy.id);
           const eventKey = `${enemy.id}:${enemy.respawnAtMs}`;
           for (const participant of participants)
-            void this.grantEnemyRewards(participant, enemy, eventKey);
+            void this.queueEnemyReward(participant, enemy, eventKey);
         }
       } else if (targetPlayer) {
         targetPlayer.health = result.targetHealth ?? targetPlayer.health;
@@ -477,41 +491,88 @@ export class WorldRoom extends Room<
     });
   }
 
-  private async grantEnemyRewards(
+  private async queueEnemyReward(
     participant: EnemyRewardParticipant,
     enemy: PveEnemy,
     eventKey: string,
   ) {
+    const input: EnemyRewardOutboxInput = {
+      eventKey,
+      userId: participant.userId,
+      characterId: participant.characterId,
+      archetype: enemy.archetype,
+      enemyLevel: ENEMY_DEFINITIONS[enemy.archetype].level,
+    };
+    const retryKey = `${eventKey}:${participant.characterId}`;
     try {
-      const reward = await grantEnemyDefeatRewards(this.pool, {
+      await enqueueEnemyReward(this.pool, input);
+      this.rewardEnqueueRetries.delete(retryKey);
+      await this.deliverPersistedReward(input, participant.sessionId);
+    } catch (error) {
+      // Retain transient enqueue failures in memory; the DB outbox survives restarts after insert.
+      this.rewardEnqueueRetries.set(retryKey, input);
+      console.error("Failed to enqueue PvE reward; retry retained in memory", {
         eventKey,
-        userId: participant.userId,
         characterId: participant.characterId,
-        archetype: enemy.archetype,
-        enemyLevel: ENEMY_DEFINITIONS[enemy.archetype].level,
+        error,
       });
-      if (!reward.granted) return;
+    }
+  }
+
+  private async flushRewardEnqueueRetries() {
+    for (const [retryKey, input] of this.rewardEnqueueRetries) {
+      try {
+        await enqueueEnemyReward(this.pool, input);
+        this.rewardEnqueueRetries.delete(retryKey);
+      } catch {
+        /* Retry on next tick; do not discard unpersisted rewards. */
+      }
+    }
+  }
+
+  private async deliverPersistedReward(
+    input: EnemyRewardOutboxInput,
+    sessionId: string,
+  ) {
+    try {
+      await processEnemyRewardOutbox(this.pool);
+      const claim = await this.pool.query<{
+        experience_awarded: number;
+        silver_awarded: number;
+        loot: RewardGrantedEnvelope["payload"]["loot"];
+        level: number;
+        experience: string;
+        silver: string;
+      }>(
+        `SELECT r.experience_awarded, r.silver_awarded, r.loot, c.level, c.experience, w.balance AS silver
+         FROM character_reward_claims r JOIN characters c ON c.id = r.character_id
+         JOIN currency_wallets w ON w.user_id = r.user_id AND w.currency_code = 'silver'
+         WHERE r.event_key = $1 AND r.character_id = $2`,
+        [input.eventKey, input.characterId],
+      );
+      const row = claim.rows[0];
+      if (!row) return;
+      const client = this.clients.find(
+        (candidate) => candidate.sessionId === sessionId,
+      );
       const envelope: RewardGrantedEnvelope = {
         type: "S2C_RewardGranted",
         protocolVersion: PROTOCOL_VERSION,
         payload: {
-          sourceId: enemy.archetype,
-          experienceAwarded: reward.experience,
-          totalExperience: reward.totalExperience,
-          level: reward.level,
-          silverAwarded: reward.silver,
-          totalSilver: reward.totalSilver,
-          loot: reward.loot,
+          sourceId: input.archetype,
+          experienceAwarded: row.experience_awarded,
+          totalExperience: Number(row.experience),
+          level: row.level,
+          silverAwarded: row.silver_awarded,
+          totalSilver: Number(row.silver),
+          loot: row.loot,
         },
       };
-      const client = this.clients.find(
-        (candidate) => candidate.sessionId === participant.sessionId,
-      );
       client?.send("S2C_RewardGranted", envelope);
     } catch (error) {
-      console.error("Failed to persist PvE reward claim", {
-        eventKey,
-        characterId: participant.characterId,
+      console.error("Failed to notify persisted PvE reward", {
+        eventKey: input.eventKey,
+        characterId: input.characterId,
         error,
       });
     }
