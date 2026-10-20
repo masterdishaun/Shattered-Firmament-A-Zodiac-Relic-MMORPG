@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -52,6 +52,7 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
     const first = await runMigrations(pool);
     expect(first.applied).toContain("0001_initial.sql");
     expect(first.applied).toContain("0002_character_mana.sql");
+    expect(first.applied).toContain("0003_progression_rewards.sql");
 
     const tables = await pool.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
@@ -73,6 +74,7 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
       "item_transactions",
       "active_character_leases",
       "schema_migrations",
+      "character_reward_claims",
     ]) {
       expect(tableNames.has(table), `missing migrated table: ${table}`).toBe(
         true,
@@ -100,6 +102,7 @@ databaseSuite("PostgreSQL migrations and persistence constraints", () => {
     expect(second.applied).toEqual([]);
     expect(second.skipped).toContain("0001_initial.sql");
     expect(second.skipped).toContain("0002_character_mana.sql");
+    expect(second.skipped).toContain("0003_progression_rewards.sql");
   });
 
   it("enforces case-insensitive account uniqueness and valid character factions", async () => {

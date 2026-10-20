@@ -75,7 +75,7 @@
 
 ## Phase 18 — Progression and economy specification
 
-- Formalise the level-100 XP curve and 70–100 active-hour target, five level bands, normalized gear stat budgets, and the 8–12% adjacent-tier power-growth guardrail.
+- Formalise the level-100 XP curve and 70-100 active-hour target, five level bands, normalized gear stat budgets, and the 8-12% adjacent-tier power-growth guardrail.
 - Define default item binding/tradeability, Silver sources/sinks, personal reward profiles, contribution eligibility, bad-luck protection and anti-farm rules.
 - Make the profile machine-checkable in the progression schema/fixture and reward-table fixtures; add tests for XP totals/bands, stat-budget sums, binding rules, reward references and per-character reward shapes.
 - Keep every numeric target explicitly provisional until a mixed-activity simulator and closed playtests validate pacing, role contribution and economy stability. This phase is a specification/contract gate; it does not implement runtime XP grants, inventory settlement, trading, marketplace or Silver ledger flows.
@@ -221,7 +221,6 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Verification: build/typecheck passed; shared protocol/schema suite passed (16/16); database-backed server suite passed 60/60; Godot 4.7.2 editor scan and prototype smoke passed. Two-client multiplayer E2E passed including Mystic Astral Bolt damage/resource spend, enemy snapshots, PvP damage, defeat, sanctuary respawn, persisted restored health, return to contested zone, and reconnect recovery. Only disposable PostgreSQL was used; no production database or deployment was touched.
 - Remaining: richer enemy roster/AI states, line-of-sight, ability animations/VFX, persistent cooldowns across server restart, combat telemetry/load testing, balance pass and GUI playtest. All combat tuning remains provisional.
 
-
 ## Progress log - Phase 17 enemy variety and combat feedback
 
 - Replaced the single-enemy tuning block with a data-driven roster: ranged Ashen Wisp, durable Jadebound Sentinel and fast Rift Stalker. All three are server-owned spawns in the Ashen Frontier; archetype-specific health, damage, ranges, movement, telegraph timing, cooldown and respawn delay are provisional.
@@ -237,10 +236,21 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Local verification on the hardening branch: `corepack pnpm build`, `corepack pnpm typecheck`, `corepack pnpm test` and `corepack pnpm lint` passed. Shared schema/content tests passed 16/16; the local no-database run passed 55 server tests with 12 database-dependent tests skipped. GitHub Actions then passed the full suite with its disposable PostgreSQL 17 service and `TEST_DATABASE_URL`, exercising database-backed integration and migration tests. Godot 4.7.2 headless editor scan and prototype smoke exited successfully. The two-client Godot E2E was rerun against a fresh disposable PostgreSQL 17 cluster: migrations 0001 and 0002 applied, and `GODOT_MULTIPLAYER_SMOKE=PASS` covered zone/PvP, PvE ability/resource use, movement replication, death/respawn persistence, reconnect and logout. The temporary database and test server were stopped and removed; no production database or deployment was touched.
 - This is a hardening follow-up to Phase 17, not a production release. The additive `0002_character_mana.sql` migration remains a release gate; Phase 16/17 have not been deployed to production.
 
-## Progress log — Phase 18 progression and economy specification
+## Progress log - Phase 18 progression and economy specification
 
-- Added a provisional deterministic XP curve: XP to advance from level L is 4,000 + 60 × L for levels 1–99, totalling 693,000 XP to level 100. The five band totals are encoded in automated tests and remain pacing hypotheses against the 70–100 active-hour target.
-- Added a normalized item stat budget (45% offense, 30% survivability, 15% role expression, 10% utility), with bounded role shifts and a provisional ±5% same-tier contribution target. Adjacent gear tiers retain the existing 8–12% effective-power guardrail.
+- Added a provisional deterministic XP curve: XP to advance from level L is 4,000 + 60 * L for levels 1-99, totalling 693,000 XP to level 100. The five band totals are encoded in automated tests and remain pacing hypotheses against the 70-100 active-hour target.
+- Added a normalized item stat budget (45% offense, 30% survivability, 15% role expression, 10% utility), with bounded role shifts and a provisional +/- 5% same-tier contribution target. Adjacent gear tiers retain the existing 8-12% effective-power guardrail.
 - Defined default binding/tradeability by category, atomic/idempotent trade and marketplace flows, Silver sources/sinks, personal loot eligibility, anti-farm rules, and provisional Ashen Frontier/elite/boss reward profiles. Premium currency remains separate from competitive power.
 - Extended the progression schema and fixture with the XP curve/stat budget; added five versioned reward profiles and content tests for XP totals/band totals, stat budget sums, item binding consistency, reward table shape, and rare-drop protection metadata.
 - Verification: `corepack pnpm build`, `corepack pnpm typecheck`, `corepack pnpm test` and `corepack pnpm lint` passed. Shared content/protocol tests passed 17/17; server tests passed 67/67 against a fresh disposable PostgreSQL 17 database, including all 12 database-backed integration/migration tests. `git diff --check` is clean. The disposable cluster was stopped and removed. This phase is specification/contracts only: no runtime reward grants, wallet settlement, marketplace, trade service, or production changes were made.
+
+## Progress log - Phase 19 progression and personal PvE rewards
+
+- Merged Phase 18 specification PR #2 into `main` before implementation. Runtime work is isolated on `phase-19-progression-rewards-runtime`; no production deployment or database was touched.
+- Added the XP curve runtime (`4,000 + 60 × level` XP to advance), level-cap enforcement at 100, and transactionally persisted enemy XP, level-ups, Silver wallet credits and currency-ledger entries.
+- Added additive migration `0003_progression_rewards.sql` with per-character, per-event reward claims. The unique `(event_key, character_id)` constraint and one transaction prevent duplicate XP/Silver grants on retries or concurrent requests.
+- Connected Ashen Frontier enemy defeats to independent personal reward rolls for Rift Stalker, Ashen Wisp and Jadebound Sentinel. Damage participation is tracked per enemy; eligibility requires 5% of enemy max health in recorded damage or qualifying nearby support healing, so reward eligibility is not determined only by the final hit. Reward notifications use the versioned `S2C_RewardGranted` envelope.
+- Added authenticated `GET /v1/characters/:characterId/rewards` history for offline/reconnect recovery. Loot is durably recorded as a reward payload and is not yet materialized into inventory item instances; that remains an explicit follow-up.
+- Added unit and PostgreSQL integration coverage for XP thresholds/cap, archetype reward ranges, concurrent duplicate claims, atomic Silver/ledger persistence, loot persistence, character ownership, level-up persistence, reward history API and the reward notification schema.
+- Verification: final `corepack pnpm build`, `corepack pnpm typecheck`, `corepack pnpm test` and `corepack pnpm lint` all passed against a fresh disposable PostgreSQL 17 database; shared schema/content tests passed 18/18 and server tests passed 73/73, including all database-backed migration/reward/API tests. `git diff --check` passed. The disposable cluster was stopped and removed. Godot headless validation was not run because the configured Godot 4.7.2 executable was not present at its expected path on the device; rerun the editor scan and prototype smoke before merging.
+- Remaining: inventory materialization, level-difference/trivial-enemy diminishing returns, quest/dungeon reward claims, persistent bad-luck protection, more complete party/support eligibility, and retry recovery if the database is unavailable during a kill. All values remain provisional; no production data or deployment was touched.

@@ -1,4 +1,4 @@
-﻿import { Room, ServerError } from "@colyseus/core";
+import { Room, ServerError } from "@colyseus/core";
 import type { Client } from "@colyseus/core";
 import type { Pool } from "pg";
 import {
@@ -8,6 +8,7 @@ import {
   type CombatResultEnvelope,
   type WorldEnemySnapshot,
   type RespawnedEnvelope,
+  type RewardGrantedEnvelope,
 } from "@shattered-firmament/shared/protocol";
 import {
   COMBAT_RULES,
@@ -26,6 +27,7 @@ import {
   stepEnemy,
   type PveEnemy,
 } from "./pve.js";
+import { grantEnemyDefeatRewards } from "./progression.js";
 import {
   FACTION_START_ZONE,
   isPositionWalkable,
@@ -54,6 +56,14 @@ import {
 
 interface WorldRoomOptions {
   pool: Pool;
+}
+
+interface EnemyRewardParticipant {
+  userId: string;
+  characterId: string;
+  sessionId: string;
+  damage: number;
+  support: boolean;
 }
 
 interface WorldPlayerRuntime extends PlayerMovementState {
@@ -92,6 +102,10 @@ export class WorldRoom extends Room<
   private readonly authenticatedClients = new Map<string, ConsumedJoinTicket>();
   private readonly playerStates = new Map<string, WorldPlayerRuntime>();
   private readonly enemies = new Map<string, PveEnemy>();
+  private readonly enemyParticipants = new Map<
+    string,
+    Map<string, EnemyRewardParticipant>
+  >();
   private readonly characterAbilityCooldowns = new Map<
     string,
     Map<string, number>
@@ -368,18 +382,47 @@ export class WorldRoom extends Room<
       actor.mana = result.resourceAfter ?? actor.mana;
       actor.abilityCooldowns.set(intent.abilityId, now);
       if (enemy) {
+        const wasAlive = enemy.health > 0;
+        if (wasAlive && result.damage > 0)
+          this.recordEnemyParticipant(enemy, actor, result.damage, false);
         enemy.health = result.targetHealth ?? enemy.health;
-        if (enemy.health <= 0) {
+        if (wasAlive && enemy.health <= 0) {
           enemy.respawnAtMs =
             now + ENEMY_DEFINITIONS[enemy.archetype].respawnDelayMs;
           enemy.aggroCharacterId = "";
           enemy.aiState = "dead";
           enemy.telegraphEndsAtMs = 0;
+          const participants = [
+            ...(this.enemyParticipants.get(enemy.id)?.values() ?? []),
+          ].filter(
+            (participant) =>
+              participant.support ||
+              participant.damage >= enemy.maxHealth * 0.05,
+          );
+          this.enemyParticipants.delete(enemy.id);
+          const eventKey = `${enemy.id}:${enemy.respawnAtMs}`;
+          for (const participant of participants)
+            void this.grantEnemyRewards(participant, enemy, eventKey);
         }
       } else if (targetPlayer) {
         targetPlayer.health = result.targetHealth ?? targetPlayer.health;
         if (targetPlayer.health <= 0)
           targetPlayer.respawnAtMs = now + ABILITY_RULES.respawnDelayMs;
+        if (result.healing > 0) {
+          for (const engagedEnemy of this.enemies.values()) {
+            if (
+              engagedEnemy.health > 0 &&
+              engagedEnemy.mapId === targetPlayer.mapId &&
+              engagedEnemy.aggroCharacterId === targetPlayer.characterId &&
+              Math.hypot(
+                engagedEnemy.x - targetPlayer.x,
+                engagedEnemy.y - targetPlayer.y,
+              ) <= 12
+            ) {
+              this.recordEnemyParticipant(engagedEnemy, actor, 0, true);
+            }
+          }
+        }
         void this.queuePositionPersistence([targetPlayer]);
       }
       void this.queuePositionPersistence([actor]);
@@ -413,6 +456,65 @@ export class WorldRoom extends Room<
     } else client.send("S2C_CombatResult", envelope);
   }
 
+  private recordEnemyParticipant(
+    enemy: PveEnemy,
+    actor: WorldPlayerRuntime,
+    damage: number,
+    support: boolean,
+  ) {
+    let participants = this.enemyParticipants.get(enemy.id);
+    if (!participants) {
+      participants = new Map();
+      this.enemyParticipants.set(enemy.id, participants);
+    }
+    const existing = participants.get(actor.characterId);
+    participants.set(actor.characterId, {
+      userId: actor.userId,
+      characterId: actor.characterId,
+      sessionId: actor.sessionId,
+      damage: (existing?.damage ?? 0) + damage,
+      support: support || (existing?.support ?? false),
+    });
+  }
+
+  private async grantEnemyRewards(
+    participant: EnemyRewardParticipant,
+    enemy: PveEnemy,
+    eventKey: string,
+  ) {
+    try {
+      const reward = await grantEnemyDefeatRewards(this.pool, {
+        eventKey,
+        userId: participant.userId,
+        characterId: participant.characterId,
+        archetype: enemy.archetype,
+      });
+      if (!reward.granted) return;
+      const envelope: RewardGrantedEnvelope = {
+        type: "S2C_RewardGranted",
+        protocolVersion: PROTOCOL_VERSION,
+        payload: {
+          sourceId: enemy.archetype,
+          experienceAwarded: reward.experience,
+          totalExperience: reward.totalExperience,
+          level: reward.level,
+          silverAwarded: reward.silver,
+          totalSilver: reward.totalSilver,
+          loot: reward.loot,
+        },
+      };
+      const client = this.clients.find(
+        (candidate) => candidate.sessionId === participant.sessionId,
+      );
+      client?.send("S2C_RewardGranted", envelope);
+    } catch (error) {
+      console.error("Failed to persist PvE reward claim", {
+        eventKey,
+        characterId: participant.characterId,
+        error,
+      });
+    }
+  }
   private handleZoneTransition(client: Client, message: unknown) {
     const state = this.playerStates.get(client.sessionId);
     if (

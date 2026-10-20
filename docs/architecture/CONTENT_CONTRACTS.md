@@ -27,7 +27,7 @@ Fixtures in `shared/fixtures/` are examples used by automated validation. They a
 - `character-archetypes.json` and `items.json` — initial archetype and item examples.
 - `zones.json` — three protected faction starts, a neutral peace zone, a contested zone and a faction PvP zone.
 - `dungeons.json`, `encounters.json` and `reward-tables.json` — three faction-opening dungeon examples.
-- `progression.json` - provisional level-100 baseline, five cultivation breakthroughs, five equipment tiers, deterministic XP curve and normalized stat budget. The XP curve and stat budget are balance hypotheses validated by content tests, not a shipped progression runtime.
+- `progression.json` - provisional level-100 baseline, five cultivation breakthroughs, five equipment tiers, deterministic XP curve and normalized stat budget. The XP curve and stat budget remain provisional. The server now awards PvE XP/Silver and persists personal reward claims; inventory materialization and broader progression systems remain open.
 
 ## Cross-record invariants tested
 
@@ -52,7 +52,7 @@ Schemas validate data shape, not gameplay authority. The server must still valid
 
 ## Known gaps
 
-This phase does not yet define all runtime contracts. Skills/effects, encounter spawn placement, localization keys, content-version migration, and runtime schema-loading integration remain future work. Sample encounter statistics and progression estimates are placeholders for later simulation and playtesting.
+This phase does not yet define all runtime contracts. Skills/effects, encounter spawn placement, localization keys, content-version migration, and runtime schema-loading integration remain future work. Sample encounter statistics and progression estimates are placeholders for later simulation and playtesting. Current reward runtime covers the three Ashen Frontier enemy archetypes; level-difference diminishing returns, quest/dungeon grants, persistent bad-luck counters and inventory materialization remain open.
 
 ## Network movement contracts
 

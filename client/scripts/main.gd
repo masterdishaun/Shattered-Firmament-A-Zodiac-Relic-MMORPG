@@ -218,6 +218,26 @@ func _request_basic_attack() -> void:
 	network_panel.send_basic_attack(nearest_id)
 
 
+func _on_reward_granted(reward: Dictionary) -> void:
+	var experience_awarded := int(reward.get("experienceAwarded", 0))
+	var silver_awarded := int(reward.get("silverAwarded", 0))
+	var level := int(reward.get("level", 1))
+	var total_experience := int(reward.get("totalExperience", 0))
+	var total_silver := int(reward.get("totalSilver", 0))
+	var message := "Reward: +%d XP, +%d Silver. Level %d | %d total XP | %d Silver." % [
+		experience_awarded,
+		silver_awarded,
+		level,
+		total_experience,
+		total_silver,
+	]
+	var loot: Array = reward.get("loot", [])
+	for item in loot:
+		if item is Dictionary:
+			message += " Loot: %s x%d." % [String(item.get("itemId", "item")), int(item.get("quantity", 1))]
+	feedback_label.text = message
+
+
 func _on_combat_result(result: Dictionary) -> void:
 	if not bool(result.get("accepted", false)):
 		feedback_label.text = "Combat rejected by server: %s." % String(result.get("reason", "unknown"))
@@ -572,6 +592,7 @@ func _toggle_network_panel() -> void:
 		network_panel.world_joined.connect(_on_world_joined)
 		network_panel.world_snapshot.connect(_on_world_snapshot)
 		network_panel.combat_result.connect(_on_combat_result)
+		network_panel.reward_granted.connect(_on_reward_granted)
 		network_panel.zone_changed.connect(_on_zone_changed)
 		network_panel.close_requested.connect(_close_network_panel)
 	network_panel.visible = not network_panel.visible
