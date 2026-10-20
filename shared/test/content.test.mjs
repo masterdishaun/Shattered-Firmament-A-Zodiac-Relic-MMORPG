@@ -105,6 +105,14 @@ test("quest catalog has valid schemas, ranges, references and an acyclic prerequ
     }
   }
   assertAcyclicQuestGraph(quests);
+  const rewardTables = await loadContent("reward-tables");
+  const rewardTableIds = new Set(rewardTables.map((table) => table.id));
+  for (const quest of quests) {
+    assert.ok(
+      rewardTableIds.has(quest.rewardTableId),
+      `${quest.id} references missing reward table ${quest.rewardTableId}`,
+    );
+  }
   assert.throws(
     () =>
       assertAcyclicQuestGraph([

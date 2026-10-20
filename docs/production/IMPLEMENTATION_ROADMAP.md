@@ -289,8 +289,15 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Expanded support eligibility so a healer can qualify by healing an ally who has participated in that enemy encounter, even when the enemy is targeting a different player. The target and healer must both be within 12 world units of the enemy and all entities must be in the same map. This preserves nearby-combat relevance and avoids awarding support credit for distant or uninvolved healing.
 - Added unit coverage for valid support, uninvolved targets, out-of-range healers and cross-map targets. Party membership is not yet a first-class game system; this eligibility uses actual encounter participation and proximity rather than assuming a party exists.
 
-
 ## Progress log - Phase 19 end-to-end reward recovery verification
 
 - Extended the two-client Godot multiplayer smoke test to defeat a live server-owned Ashen Wisp, require a server-confirmed personal XP/Silver reward event, then independently query the authenticated reward-history API and assert the same XP/Silver claim is durably recoverable.
 - Ran against a fresh disposable PostgreSQL 17 cluster with migrations `0001` through `0006` applied, and isolated local API/game ports. Result: `GODOT_MULTIPLAYER_SMOKE=PASS`; database inspection confirmed one completed outbox event, one unique reward claim, 84 XP and 4 Silver awarded. No inventory item was expected in this random roll. The isolated local game/API service and disposable PostgreSQL cluster were stopped and removed after verification. No production services/data were used.
+
+## Phase 20 - Quest and dungeon reward settlement (in progress)
+
+- Added guaranteed XP/Silver reward tables for all 25 quest definitions. These values are provisional balance baselines; content validation now fails if any quest references a missing reward table.
+- Added authenticated `POST /v1/characters/:characterId/quests/:questId/claim`. It reads server-stored quest completion/objective progress, enforces required objective counts, prerequisite completion and faction access, and never accepts reward quantities from the client. Claims are keyed by quest ID/content version and settle XP, Silver ledger, item instances and claim history in one transaction.
+- Added internal server-side dungeon completion settlement with an explicit completion event key, required encounter validation, faction/level checks, durable completion evidence and atomic reward claims. The client cannot create a dungeon completion event through an HTTP endpoint; the authoritative dungeon runtime must call this service only after it verifies the required encounters.
+- Added migration `0007_dungeon_completion_events.sql` and PostgreSQL integration tests for concurrent quest claim replay, incomplete objectives, faction locks, dungeon replay, event-key reuse and incomplete encounter sets. Local build/typecheck/lint pass; full test suite passes with shared 18/18 and server 87/87 against a fresh disposable PostgreSQL 17 test database.
+- Dungeon reward settlement is ready for the future dungeon runtime, but boss/instance gameplay itself is not yet implemented. No production services or data were touched.

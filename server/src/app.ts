@@ -7,6 +7,10 @@ import Fastify, {
 import { Pool, type PoolClient } from "pg";
 import { PROTOCOL_VERSION } from "@shattered-firmament/shared/protocol";
 import {
+  claimQuestCompletionRewards,
+  ContentRewardError,
+} from "./content-rewards.js";
+import {
   createOpaqueToken,
   hashOpaqueToken,
   hashPassword,
@@ -481,6 +485,70 @@ export const createApp = (
       return databaseUnavailable(reply);
     }
   });
+
+  app.post<{ Params: { characterId: string; questId: string } }>(
+    "/v1/characters/:characterId/quests/:questId/claim",
+    {
+      schema: {
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["characterId", "questId"],
+          properties: {
+            characterId: { type: "string", format: "uuid" },
+            questId: {
+              type: "string",
+              pattern: "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+              maxLength: 160,
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const auth = await authenticateRequest(
+        request,
+        reply,
+        pool,
+        accessTokenSecret,
+      );
+      if (!auth) return;
+      try {
+        const reward = await claimQuestCompletionRewards(pool!, {
+          userId: auth.id,
+          characterId: request.params.characterId,
+          questId: request.params.questId,
+        });
+        return { reward };
+      } catch (error) {
+        if (error instanceof ContentRewardError) {
+          const statusCode =
+            error.code === "CHARACTER_NOT_FOUND" ||
+            error.code === "QUEST_NOT_FOUND"
+              ? 404
+              : error.code === "QUEST_FACTION_MISMATCH"
+                ? 403
+                : [
+                      "QUEST_NOT_COMPLETED",
+                      "QUEST_OBJECTIVES_INCOMPLETE",
+                      "QUEST_PREREQUISITE_INCOMPLETE",
+                    ].includes(error.code)
+                  ? 409
+                  : 503;
+          if (statusCode === 503)
+            request.log.error(
+              { err: error },
+              "Quest reward content configuration failed",
+            );
+          return reply
+            .code(statusCode)
+            .send({ error: { code: error.code, message: error.message } });
+        }
+        request.log.error({ err: error }, "Quest reward claim failed");
+        return databaseUnavailable(reply);
+      }
+    },
+  );
 
   app.get<{ Params: { characterId: string } }>(
     "/v1/characters/:characterId/rewards",

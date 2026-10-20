@@ -27,12 +27,12 @@ Fixtures in `shared/fixtures/` are examples used by automated validation. They a
 - `character-archetypes.json` and `items.json` — initial archetype and item examples.
 - `zones.json` — three protected faction starts, a neutral peace zone, a contested zone and a faction PvP zone.
 - `dungeons.json`, `encounters.json` and `reward-tables.json` — three faction-opening dungeon examples.
-- `progression.json` - provisional level-100 baseline, five cultivation breakthroughs, five equipment tiers, deterministic XP curve and normalized stat budget. The XP curve and stat budget remain provisional. The server now awards PvE XP/Silver and persists personal reward claims; inventory materialization and broader progression systems remain open.
+- `progression.json` - provisional level-100 baseline, five cultivation breakthroughs, five equipment tiers, deterministic XP curve and normalized stat budget. The XP curve and stat budget remain provisional. The server now awards PvE XP/Silver, materializes personal loot, persists reward claims and pity counters, and supports authenticated claims for completed quests plus internal dungeon-completion settlement. Values remain provisional pending simulation and playtesting.
 
 ## Cross-record invariants tested
 
 - IDs are unique within each content collection.
-- Quest level ranges are ordered, objective IDs are unique per quest, prerequisites exist, and the prerequisite graph has no cycles.
+- Quest level ranges are ordered, objective IDs are unique per quest, prerequisites exist, the prerequisite graph has no cycles, and every quest references an existing reward table.
 - A quest marked as essential progression cannot itself be faction-only. Faction opening arcs are alternatives, not one globally required quest.
 - Every faction has a matching, unique starting region.
 - Faction start and peace zones are safe and disallow PvP; faction PvP zones are explicitly unsafe and PvP-enabled.
@@ -52,7 +52,7 @@ Schemas validate data shape, not gameplay authority. The server must still valid
 
 ## Known gaps
 
-This phase does not yet define all runtime contracts. Skills/effects, encounter spawn placement, localization keys, content-version migration, and runtime schema-loading integration remain future work. Sample encounter statistics and progression estimates are placeholders for later simulation and playtesting. Current reward runtime covers the three Ashen Frontier enemy archetypes; level-difference diminishing returns, quest/dungeon grants, persistent bad-luck counters and inventory materialization remain open.
+This phase does not yet define all runtime contracts. Skills/effects, encounter spawn placement, localization keys, content-version migration, and runtime schema-loading integration remain future work. Sample encounter statistics and progression estimates are placeholders for later simulation and playtesting. Current reward runtime covers the three Ashen Frontier enemy archetypes, level-difference diminishing returns, persistent bad-luck protection, inventory materialization, quest reward claims and internal dungeon reward settlement. The full quest objective/event system and dungeon instance/boss runtime must still generate trustworthy completion state before these reward services can be wired into live gameplay.
 
 ## Network movement contracts
 
