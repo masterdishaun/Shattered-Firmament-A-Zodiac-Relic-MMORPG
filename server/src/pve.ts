@@ -159,9 +159,10 @@ export function stepEnemy(
       Object.assign(enemy, createEnemy(enemy.archetype, nowMs, enemy.id));
     return null;
   }
+  const previousTargetId = enemy.aggroCharacterId;
   let target = players.find((player) => {
     if (
-      player.characterId !== enemy.aggroCharacterId ||
+      player.characterId !== previousTargetId ||
       player.mapId !== enemy.mapId ||
       player.health <= 0
     )
@@ -180,8 +181,13 @@ export function stepEnemy(
       }))
       .filter((candidate) => candidate.distance <= definition.aggroRange)
       .sort((a, b) => a.distance - b.distance)[0]?.player;
-    enemy.aggroCharacterId = target?.characterId ?? "";
-    enemy.telegraphEndsAtMs = 0;
+    const nextTargetId = target?.characterId ?? "";
+    enemy.aggroCharacterId = nextTargetId;
+    if (nextTargetId !== previousTargetId) {
+      // A new target must always receive a complete, fresh attack warning.
+      enemy.aiState = "idle";
+      enemy.telegraphEndsAtMs = 0;
+    }
   }
   if (!target) {
     enemy.aiState = "idle";

@@ -100,6 +100,71 @@ describe("server-authoritative PvE enemy AI", () => {
     expect(enemy.aiState).toBe("idle");
     expect(enemy.telegraphEndsAtMs).toBe(0);
   });
+  it("requires a fresh telegraph when a target dies and another is acquired", () => {
+    const enemy = createAshenWisp();
+    const originalTarget = player({ characterId: "original", x: 3, y: -20 });
+    const replacementTarget = player({
+      characterId: "replacement",
+      x: 3,
+      y: -21,
+    });
+
+    expect(stepEnemy(enemy, [originalTarget], 0.05, 1000)).toBeNull();
+    expect(enemy.telegraphEndsAtMs).toBe(1750);
+
+    expect(
+      stepEnemy(
+        enemy,
+        [{ ...originalTarget, health: 0 }, replacementTarget],
+        0.05,
+        1200,
+      ),
+    ).toBeNull();
+    expect(enemy.aggroCharacterId).toBe("replacement");
+    expect(enemy.aiState).toBe("telegraph");
+    expect(enemy.telegraphEndsAtMs).toBe(1950);
+    expect(stepEnemy(enemy, [replacementTarget], 0.05, 1949)).toBeNull();
+    expect(stepEnemy(enemy, [replacementTarget], 0.05, 1950)).toMatchObject({
+      targetCharacterId: "replacement",
+      enemyId: ASHEN_WISP.id,
+    });
+  });
+  it("does not skip a wind-up when a target is replaced after leaving leash", () => {
+    const enemy = createAshenWisp();
+    const originalTarget = player({ characterId: "original" });
+    const replacementTarget = player({
+      characterId: "replacement",
+      x: 3,
+      y: -21,
+    });
+
+    stepEnemy(enemy, [originalTarget], 0.05, 1000);
+    expect(enemy.aiState).toBe("telegraph");
+    expect(
+      stepEnemy(
+        enemy,
+        [player({ characterId: "original", x: 30, y: 30 }), replacementTarget],
+        0.05,
+        1800,
+      ),
+    ).toBeNull();
+    expect(enemy.aggroCharacterId).toBe("replacement");
+    expect(enemy.telegraphEndsAtMs).toBe(2550);
+    expect(stepEnemy(enemy, [replacementTarget], 0.05, 2550)).toMatchObject({
+      targetCharacterId: "replacement",
+    });
+  });
+  it("honours a telegraph deadline when the server tick arrives late", () => {
+    const enemy = createAshenWisp();
+    const target = player();
+
+    expect(stepEnemy(enemy, [target], 0.05, 1000)).toBeNull();
+    expect(stepEnemy(enemy, [target], 0.05, 1800)).toMatchObject({
+      targetCharacterId: "hero",
+      damage: ENEMY_DEFINITIONS["ashen-wisp"].damage,
+    });
+    expect(stepEnemy(enemy, [target], 0.05, 1801)).toBeNull();
+  });
   it("uses distinct attack ranges, damage and telegraph durations", () => {
     expect(ENEMY_DEFINITIONS["ashen-wisp"].attackRange).toBeGreaterThan(
       ENEMY_DEFINITIONS["jadebound-sentinel"].attackRange,
