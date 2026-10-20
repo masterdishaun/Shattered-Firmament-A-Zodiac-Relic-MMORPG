@@ -130,6 +130,25 @@ test("character archetypes and item definitions satisfy their schemas", async ()
   const items = await assertValidCollection("items", "item-definition");
   assert.ok(archetypes.length >= 3);
   assert.ok(items.some((item) => item.cosmeticOnly === true));
+  for (const item of items) {
+    if (
+      ["bind_on_pickup", "account_bound", "character_bound"].includes(
+        item.bindPolicy,
+      )
+    ) {
+      assert.equal(
+        item.tradeable,
+        false,
+        item.id + " cannot be tradeable with binding policy " + item.bindPolicy,
+      );
+    }
+    if (item.tradeable) {
+      assert.ok(
+        ["unbound", "bind_on_equip"].includes(item.bindPolicy),
+        item.id + " has an invalid tradeability/binding combination",
+      );
+    }
+  }
   for (const archetype of archetypes) {
     for (const itemId of archetype.startingEquipmentIds ?? []) {
       assert.ok(
@@ -244,6 +263,44 @@ test("reward tables satisfy schema, item references and quantity bounds", async 
   }
 });
 
+test("provisional reward profiles provide personal XP/Silver and tradeability-safe materials", async () => {
+  const tables = await loadContent("reward-tables");
+  const byId = new Map(tables.map((table) => [table.id, table]));
+  for (const id of [
+    "rewards.ashen-frontier.rift-stalker",
+    "rewards.ashen-frontier.ashen-wisp",
+    "rewards.ashen-frontier.jadebound-sentinel",
+  ]) {
+    const table = byId.get(id);
+    assert.ok(table, "Missing provisional enemy reward table: " + id);
+    const xp = table.entries.find((entry) => entry.rewardType === "experience");
+    const silver = table.entries.find(
+      (entry) => entry.rewardType === "currency",
+    );
+    const material = table.entries.find(
+      (entry) => entry.rewardType === "material",
+    );
+    assert.ok(xp && xp.quantityMin <= xp.quantityMax && xp.tradeable === false);
+    assert.ok(
+      silver &&
+        silver.currencyCode === "SILVER" &&
+        silver.quantityMin <= silver.quantityMax,
+    );
+    assert.ok(
+      material &&
+        material.tradeable === true &&
+        material.chance > 0 &&
+        material.chance < 1,
+    );
+  }
+  const boss = byId.get("rewards.dungeon-boss.test-profile");
+  assert.equal(boss?.rollPolicy, "bad_luck_protected");
+  assert.ok(
+    boss?.entries.some(
+      (entry) => entry.badLuckGroupId === "bad-luck.dungeon-boss.rare",
+    ),
+  );
+});
 test("encounters reference valid zones and reward tables", async () => {
   const [encounters, zones, rewards] = await Promise.all([
     assertValidCollection("encounters", "encounter-definition"),
@@ -280,6 +337,48 @@ test("progression baseline keeps realm and gear tiers within the launch level ca
   const validate = new Ajv2020({ allErrors: true }).compile(schema);
   assert.equal(validate(progression), true, JSON.stringify(validate.errors));
   assert.equal(progression.levelCap, 100);
+  const curve = progression.experienceCurve;
+  const thresholds = [];
+  for (let level = 1; level < progression.levelCap; level += 1) {
+    const threshold = curve.baseXp + curve.perLevelXp * level;
+    assert.ok(threshold > 0, "level " + level + " must require positive XP");
+    if (thresholds.length > 0)
+      assert.ok(
+        threshold >= thresholds[thresholds.length - 1],
+        "XP thresholds must be monotonic",
+      );
+    thresholds.push(threshold);
+  }
+  assert.equal(
+    thresholds.reduce((sum, threshold) => sum + threshold, 0),
+    curve.totalXpToCap,
+  );
+  assert.equal(curve.totalXpToCap, 693000);
+  const bandTotals = [
+    [1, 20],
+    [20, 40],
+    [40, 60],
+    [60, 80],
+    [80, 100],
+  ].map(([firstLevel, nextLevel]) =>
+    thresholds
+      .slice(firstLevel - 1, nextLevel - 1)
+      .reduce((sum, threshold) => sum + threshold, 0),
+  );
+  assert.deepEqual(bandTotals, [87400, 115400, 139400, 163400, 187400]);
+  const budget = progression.statBudget;
+  assert.equal(
+    budget.offensePercent +
+      budget.survivabilityPercent +
+      budget.roleExpressionPercent +
+      budget.utilityPercent,
+    100,
+  );
+  assert.ok(budget.maxRoleShiftPoints >= 0 && budget.maxRoleShiftPoints <= 100);
+  assert.ok(
+    budget.sameTierContributionVariancePercent >= 0 &&
+      budget.sameTierContributionVariancePercent <= 100,
+  );
   assert.ok(
     progression.expectedHoursToCap.minimum <=
       progression.expectedHoursToCap.maximum,

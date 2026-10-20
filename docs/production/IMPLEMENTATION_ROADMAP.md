@@ -73,6 +73,14 @@
 - Privacy/security review, crash analytics, backups/restore drills, maintenance mode and sunset policy.
   **Exit:** explicit sign-off; unresolved critical security, data-loss or performance issues block launch.
 
+## Phase 18 — Progression and economy specification
+
+- Formalise the level-100 XP curve and 70–100 active-hour target, five level bands, normalized gear stat budgets, and the 8–12% adjacent-tier power-growth guardrail.
+- Define default item binding/tradeability, Silver sources/sinks, personal reward profiles, contribution eligibility, bad-luck protection and anti-farm rules.
+- Make the profile machine-checkable in the progression schema/fixture and reward-table fixtures; add tests for XP totals/bands, stat-budget sums, binding rules, reward references and per-character reward shapes.
+- Keep every numeric target explicitly provisional until a mixed-activity simulator and closed playtests validate pacing, role contribution and economy stability. This phase is a specification/contract gate; it does not implement runtime XP grants, inventory settlement, trading, marketplace or Silver ledger flows.
+  **Exit:** schema/content tests pass; XP curve totals and band totals reproduce exactly; tradeability and reward invariants are tested; remaining implementation and simulation gates are recorded without claiming runtime economy delivery.
+
 ## Status reporting
 
 Every report distinguishes implemented, locally tested, integration-tested, load-tested, Godot-export-tested, deployed and production-verified. Never collapse these into a generic â€œdoneâ€.
@@ -228,3 +236,11 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - Added regressions for a target dying during a telegraph, a target leaving leash, a late server tick, and single-hit/cooldown behaviour. Existing cross-map/safe-zone isolation and faction PvP policy tests remain unchanged.
 - Local verification on the hardening branch: `corepack pnpm build`, `corepack pnpm typecheck`, `corepack pnpm test` and `corepack pnpm lint` passed. Shared schema/content tests passed 16/16; the local no-database run passed 55 server tests with 12 database-dependent tests skipped. GitHub Actions then passed the full suite with its disposable PostgreSQL 17 service and `TEST_DATABASE_URL`, exercising database-backed integration and migration tests. Godot 4.7.2 headless editor scan and prototype smoke exited successfully. The two-client Godot E2E was rerun against a fresh disposable PostgreSQL 17 cluster: migrations 0001 and 0002 applied, and `GODOT_MULTIPLAYER_SMOKE=PASS` covered zone/PvP, PvE ability/resource use, movement replication, death/respawn persistence, reconnect and logout. The temporary database and test server were stopped and removed; no production database or deployment was touched.
 - This is a hardening follow-up to Phase 17, not a production release. The additive `0002_character_mana.sql` migration remains a release gate; Phase 16/17 have not been deployed to production.
+
+## Progress log — Phase 18 progression and economy specification
+
+- Added a provisional deterministic XP curve: XP to advance from level L is 4,000 + 60 × L for levels 1–99, totalling 693,000 XP to level 100. The five band totals are encoded in automated tests and remain pacing hypotheses against the 70–100 active-hour target.
+- Added a normalized item stat budget (45% offense, 30% survivability, 15% role expression, 10% utility), with bounded role shifts and a provisional ±5% same-tier contribution target. Adjacent gear tiers retain the existing 8–12% effective-power guardrail.
+- Defined default binding/tradeability by category, atomic/idempotent trade and marketplace flows, Silver sources/sinks, personal loot eligibility, anti-farm rules, and provisional Ashen Frontier/elite/boss reward profiles. Premium currency remains separate from competitive power.
+- Extended the progression schema and fixture with the XP curve/stat budget; added five versioned reward profiles and content tests for XP totals/band totals, stat budget sums, item binding consistency, reward table shape, and rare-drop protection metadata.
+- Verification: `corepack pnpm build`, `corepack pnpm typecheck`, `corepack pnpm test` and `corepack pnpm lint` passed. Shared content/protocol tests passed 17/17; server tests passed 67/67 against a fresh disposable PostgreSQL 17 database, including all 12 database-backed integration/migration tests. `git diff --check` is clean. The disposable cluster was stopped and removed. This phase is specification/contracts only: no runtime reward grants, wallet settlement, marketplace, trade service, or production changes were made.

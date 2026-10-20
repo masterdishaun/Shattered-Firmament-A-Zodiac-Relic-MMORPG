@@ -27,7 +27,7 @@ Fixtures in `shared/fixtures/` are examples used by automated validation. They a
 - `character-archetypes.json` and `items.json` — initial archetype and item examples.
 - `zones.json` — three protected faction starts, a neutral peace zone, a contested zone and a faction PvP zone.
 - `dungeons.json`, `encounters.json` and `reward-tables.json` — three faction-opening dungeon examples.
-- `progression.json` — provisional level-100 baseline, five cultivation breakthroughs and five equipment tiers.
+- `progression.json` - provisional level-100 baseline, five cultivation breakthroughs, five equipment tiers, deterministic XP curve and normalized stat budget. The XP curve and stat budget are balance hypotheses validated by content tests, not a shipped progression runtime.
 
 ## Cross-record invariants tested
 

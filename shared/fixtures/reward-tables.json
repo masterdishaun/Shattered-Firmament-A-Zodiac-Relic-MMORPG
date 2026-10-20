@@ -70,5 +70,189 @@
         "tradeable": false
       }
     ]
+  },
+  {
+    "id": "rewards.ashen-frontier.rift-stalker",
+    "version": 1,
+    "rollPolicy": "personal_roll",
+    "entries": [
+      {
+        "id": "entry.rift-stalker.xp",
+        "rewardType": "experience",
+        "quantityMin": 60,
+        "quantityMax": 90,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.rift-stalker.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 3,
+        "quantityMax": 6,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.rift-stalker.fragment",
+        "rewardType": "material",
+        "itemId": "material.ashen-jade-fragment",
+        "quantityMin": 1,
+        "quantityMax": 1,
+        "chance": 0.08,
+        "tradeable": true
+      }
+    ]
+  },
+  {
+    "id": "rewards.ashen-frontier.ashen-wisp",
+    "version": 1,
+    "rollPolicy": "personal_roll",
+    "entries": [
+      {
+        "id": "entry.ashen-wisp.xp",
+        "rewardType": "experience",
+        "quantityMin": 70,
+        "quantityMax": 100,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.ashen-wisp.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 3,
+        "quantityMax": 7,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.ashen-wisp.fragment",
+        "rewardType": "material",
+        "itemId": "material.ashen-jade-fragment",
+        "quantityMin": 1,
+        "quantityMax": 1,
+        "chance": 0.1,
+        "tradeable": true
+      }
+    ]
+  },
+  {
+    "id": "rewards.ashen-frontier.jadebound-sentinel",
+    "version": 1,
+    "rollPolicy": "personal_roll",
+    "entries": [
+      {
+        "id": "entry.jadebound-sentinel.xp",
+        "rewardType": "experience",
+        "quantityMin": 90,
+        "quantityMax": 120,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.jadebound-sentinel.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 5,
+        "quantityMax": 9,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.jadebound-sentinel.fragment",
+        "rewardType": "material",
+        "itemId": "material.ashen-jade-fragment",
+        "quantityMin": 1,
+        "quantityMax": 1,
+        "chance": 0.12,
+        "tradeable": true
+      }
+    ]
+  },
+  {
+    "id": "rewards.elite.test-profile",
+    "version": 1,
+    "rollPolicy": "personal_roll",
+    "entries": [
+      {
+        "id": "entry.elite.xp",
+        "rewardType": "experience",
+        "quantityMin": 250,
+        "quantityMax": 500,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.elite.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 15,
+        "quantityMax": 30,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.elite.common-material",
+        "rewardType": "material",
+        "itemId": "material.ashen-jade-fragment",
+        "quantityMin": 1,
+        "quantityMax": 1,
+        "chance": 1,
+        "tradeable": true
+      },
+      {
+        "id": "entry.elite.uncommon-material",
+        "rewardType": "material",
+        "itemId": "material.ashen-jade-fragment",
+        "quantityMin": 1,
+        "quantityMax": 1,
+        "chance": 0.15,
+        "tradeable": true
+      }
+    ]
+  },
+  {
+    "id": "rewards.dungeon-boss.test-profile",
+    "version": 1,
+    "rollPolicy": "bad_luck_protected",
+    "entries": [
+      {
+        "id": "entry.dungeon-boss.xp",
+        "rewardType": "experience",
+        "quantityMin": 1500,
+        "quantityMax": 4000,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.dungeon-boss.silver",
+        "rewardType": "currency",
+        "currencyCode": "SILVER",
+        "quantityMin": 50,
+        "quantityMax": 120,
+        "chance": 1,
+        "tradeable": false
+      },
+      {
+        "id": "entry.dungeon-boss.material",
+        "rewardType": "material",
+        "itemId": "material.ashen-jade-fragment",
+        "quantityMin": 1,
+        "quantityMax": 3,
+        "chance": 1,
+        "tradeable": true
+      },
+      {
+        "id": "entry.dungeon-boss.rare",
+        "rewardType": "item",
+        "itemId": "consumable.spirit-tonic",
+        "quantityMin": 1,
+        "quantityMax": 1,
+        "chance": 0.05,
+        "tradeable": true,
+        "badLuckGroupId": "bad-luck.dungeon-boss.rare"
+      }
+    ]
   }
 ]
