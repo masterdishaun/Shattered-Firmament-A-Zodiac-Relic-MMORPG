@@ -115,6 +115,7 @@ databaseSuite("authentication and character API integration", () => {
       userId: tokens.user.id,
       characterId: character.id,
       archetype: "rift-stalker",
+      enemyLevel: 2,
       random: () => 0,
     });
     const rewards = await service.app.inject({

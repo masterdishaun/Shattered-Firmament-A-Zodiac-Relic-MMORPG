@@ -4,6 +4,8 @@ import type { Pool, PoolClient } from "pg";
 export const LEVEL_CAP = 100;
 export const XP_BASE = 4_000;
 export const XP_PER_LEVEL = 60;
+export const LOOT_PITY_MISS_LIMIT = 9;
+export const PITY_PROTECTED_ITEM_ID = "material.ashen-jade-fragment";
 
 export type EnemyRewardArchetype =
   "rift-stalker" | "ashen-wisp" | "jadebound-sentinel";
@@ -19,6 +21,7 @@ export interface EnemyRewardGrantInput {
   userId: string;
   characterId: string;
   archetype: EnemyRewardArchetype;
+  enemyLevel: number;
   random?: () => number;
 }
 
@@ -27,6 +30,28 @@ export interface EnemyRewardGrantResult extends RolledEnemyRewards {
   level: number;
   totalExperience: number;
   totalSilver: number;
+}
+
+export function xpMultiplierForLevelDifference(
+  characterLevel: number,
+  enemyLevel: number,
+): number {
+  if (
+    !Number.isInteger(characterLevel) ||
+    characterLevel < 1 ||
+    characterLevel > LEVEL_CAP ||
+    !Number.isInteger(enemyLevel) ||
+    enemyLevel < 1 ||
+    enemyLevel > LEVEL_CAP
+  )
+    throw new RangeError(
+      "Character and enemy levels must be integers within the level cap.",
+    );
+  const difference = characterLevel - enemyLevel;
+  if (difference <= 4) return 1;
+  if (difference <= 9) return 0.5;
+  if (difference <= 19) return 0.25;
+  return 0.1;
 }
 
 const ENEMY_REWARD_RANGES: Record<
@@ -92,7 +117,7 @@ export async function grantEnemyDefeatRewards(
 ): Promise<EnemyRewardGrantResult> {
   if (!input.eventKey || input.eventKey.length > 200)
     throw new TypeError("A bounded, stable reward event key is required.");
-  const rewards = rollEnemyRewards(input.archetype, input.random);
+  const rolledRewards = rollEnemyRewards(input.archetype, input.random);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -107,6 +132,37 @@ export async function grantEnemyDefeatRewards(
     );
     const character = characterResult.rows[0];
     if (!character) throw new Error("REWARD_CHARACTER_NOT_FOUND");
+    if (
+      !Number.isInteger(input.enemyLevel) ||
+      input.enemyLevel < 1 ||
+      input.enemyLevel > LEVEL_CAP
+    )
+      throw new RangeError(
+        "Enemy level must be an integer within the level cap.",
+      );
+    const xpMultiplier =
+      Number(character.level) >= LEVEL_CAP
+        ? 0
+        : xpMultiplierForLevelDifference(
+            Number(character.level),
+            input.enemyLevel,
+          );
+    const pityResult = await client.query<{ consecutive_misses: number }>(
+      `SELECT consecutive_misses FROM character_loot_pity
+       WHERE character_id = $1 AND item_id = $2 FOR UPDATE`,
+      [input.characterId, PITY_PROTECTED_ITEM_ID],
+    );
+    const previousMisses = Number(pityResult.rows[0]?.consecutive_misses ?? 0);
+    const rolledLoot = rolledRewards.loot;
+    const pityLoot =
+      rolledLoot.length === 0 && previousMisses >= LOOT_PITY_MISS_LIMIT
+        ? [{ itemId: PITY_PROTECTED_ITEM_ID, quantity: 1, tradeable: true }]
+        : rolledLoot;
+    const rewards: RolledEnemyRewards = {
+      ...rolledRewards,
+      experience: Math.floor(rolledRewards.experience * xpMultiplier),
+      loot: pityLoot,
+    };
 
     const claim = await client.query(
       `INSERT INTO character_reward_claims
@@ -140,6 +196,23 @@ export async function grantEnemyDefeatRewards(
         totalSilver,
       };
     }
+
+    // Pity changes only after a new claim has been inserted, and in the same
+    // transaction. Duplicate claims return above without changing this counter.
+    await client.query(
+      `INSERT INTO character_loot_pity
+        (character_id, item_id, consecutive_misses, updated_at)
+       VALUES ($1, $2, $3, now())
+       ON CONFLICT (character_id) DO UPDATE
+       SET consecutive_misses = EXCLUDED.consecutive_misses, updated_at = now()`,
+      [
+        input.characterId,
+        PITY_PROTECTED_ITEM_ID,
+        rewards.loot.some((item) => item.itemId === PITY_PROTECTED_ITEM_ID)
+          ? 0
+          : Math.min(LOOT_PITY_MISS_LIMIT, previousMisses + 1),
+      ],
+    );
 
     // Materialize the recorded loot inside the same transaction as the claim.
     // Item definition policy is authoritative; reward payloads cannot override it.

@@ -8,6 +8,7 @@ export interface PveEnemy {
   archetype: EnemyArchetypeId;
   attackStyle: EnemyAttackStyle;
   name: string;
+  level: number;
   mapId: string;
   x: number;
   y: number;
@@ -35,6 +36,7 @@ export interface EnemyStepResult {
 export interface EnemyDefinition {
   id: EnemyArchetypeId;
   name: string;
+  level: number;
   mapId: string;
   x: number;
   y: number;
@@ -53,6 +55,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyArchetypeId, EnemyDefinition> = {
   "ashen-wisp": {
     id: "ashen-wisp",
     name: "Ashen Wisp",
+    level: 1,
     mapId: "zone.ashen-frontier",
     x: 3,
     y: -23,
@@ -70,6 +73,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyArchetypeId, EnemyDefinition> = {
   "jadebound-sentinel": {
     id: "jadebound-sentinel",
     name: "Jadebound Sentinel",
+    level: 3,
     mapId: "zone.ashen-frontier",
     x: -3,
     y: -24,
@@ -87,6 +91,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyArchetypeId, EnemyDefinition> = {
   "rift-stalker": {
     id: "rift-stalker",
     name: "Rift Stalker",
+    level: 2,
     mapId: "zone.ashen-frontier",
     x: 7,
     y: -25,
@@ -125,6 +130,7 @@ export function createEnemy(
     archetype,
     attackStyle: definition.attackStyle,
     name: definition.name,
+    level: definition.level,
     mapId: definition.mapId,
     x: definition.x,
     y: definition.y,

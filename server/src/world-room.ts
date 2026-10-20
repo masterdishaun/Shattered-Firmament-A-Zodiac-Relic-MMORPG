@@ -488,6 +488,7 @@ export class WorldRoom extends Room<
         userId: participant.userId,
         characterId: participant.characterId,
         archetype: enemy.archetype,
+        enemyLevel: ENEMY_DEFINITIONS[enemy.archetype].level,
       });
       if (!reward.granted) return;
       const envelope: RewardGrantedEnvelope = {

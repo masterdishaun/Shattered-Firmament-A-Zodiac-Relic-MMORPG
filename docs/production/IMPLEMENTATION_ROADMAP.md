@@ -262,4 +262,20 @@ Every report distinguishes implemented, locally tested, integration-tested, load
 - PvE reward settlement now creates actual `item_instances` for every rolled loot entry in the same database transaction as the unique reward claim, XP, Silver wallet and ledger update. The item definition is authoritative for tradeability; missing or mismatched definitions abort and roll back the complete reward transaction.
 - Extended PostgreSQL integration coverage to prove concurrent/replayed claims produce one inventory instance, owned by the qualifying character, with the expected item version, quantity and unbound state. Migration tests assert the reward definition and migration idempotency.
 - Verification: build and typecheck passed; lint passed after formatting; full test suite passed against a fresh disposable PostgreSQL 17 cluster (shared 18/18, server 73/73 including database-backed migration, reward and API integration tests); `git diff --check` passed. Godot 4.7.2 headless editor filesystem scan and main-scene smoke run both exited successfully. The disposable test cluster was stopped and its data directory and log were removed after verification.
-- Still not complete: anti-farming XP reduction, persistent bad-luck protection, quest/dungeon reward claims, durable reward retry after database failure, and expanded party/support eligibility. PR #3 remains open pending remaining gates; no production service or database was touched.
+- Still not complete: persistent bad-luck protection, quest/dungeon reward claims, durable reward retry after database failure, and expanded party/support eligibility. PR #3 remains open pending remaining gates; no production service or database was touched.
+
+
+## Progress log - Phase 19 anti-farming XP follow-up
+
+- Added explicit provisional levels to the three Ashen Frontier enemy archetypes (Ashen Wisp 1, Rift Stalker 2, Jadebound Sentinel 3) and feed the server-owned level into reward settlement.
+- Added level-difference XP scaling: full XP when the player is at most four levels above the enemy; 50% at +5 to +9; 25% at +10 to +19; 10% at +20 or more. Higher-level enemies do not incur a penalty. Players already at level 100 receive no further XP, while Silver and eligible loot still settle normally.
+- XP scaling is applied before the reward claim is persisted, so the claim history records the actual XP credited. Added unit and PostgreSQL integration coverage for thresholds, validation, persisted reduced XP, and unchanged Silver settlement.
+- All enemy levels and multipliers are provisional balance values for later simulation/playtesting. Persistent bad-luck protection, quest/dungeon rewards, durable retry after database failure, and expanded party/support eligibility remain open.
+
+
+## Progress log - Phase 19 persistent loot pity
+
+- Added `character_loot_pity`, keyed by character and protected material, with a bounded consecutive-miss counter. A fragment is guaranteed after nine recorded misses (the tenth eligible defeat); a natural or guaranteed drop resets the counter.
+- The pity read, unique reward claim, pity update, item materialization, XP, Silver, and currency ledger remain in one PostgreSQL transaction. Character-row locking serializes grants for the same character; duplicate event replays return before the counter can advance.
+- Added migration assertions and PostgreSQL integration coverage for miss tracking, forced drop/reset, and concurrent duplicate replay. Pity currently protects only the Ashen-Jade Fragment; this threshold is provisional for simulation/playtesting.
+- Durable retry after database failure and expanded party/support eligibility remain open. No production service or database was touched.

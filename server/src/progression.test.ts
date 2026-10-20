@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   LEVEL_CAP,
+  LOOT_PITY_MISS_LIMIT,
+  PITY_PROTECTED_ITEM_ID,
   levelForTotalExperience,
   rollEnemyRewards,
+  xpMultiplierForLevelDifference,
   xpRequiredForNextLevel,
 } from "./progression.js";
 
@@ -36,6 +39,21 @@ describe("progression reward rules", () => {
         },
       ],
     });
+  });
+
+  it("reduces XP from trivial enemies while preserving full rewards near the player's level", () => {
+    expect(xpMultiplierForLevelDifference(10, 10)).toBe(1);
+    expect(xpMultiplierForLevelDifference(15, 10)).toBe(0.5);
+    expect(xpMultiplierForLevelDifference(20, 10)).toBe(0.25);
+    expect(xpMultiplierForLevelDifference(30, 10)).toBe(0.1);
+    expect(xpMultiplierForLevelDifference(10, 15)).toBe(1);
+    expect(() => xpMultiplierForLevelDifference(0, 1)).toThrow(/levels/);
+    expect(() => xpMultiplierForLevelDifference(1, 101)).toThrow(/levels/);
+  });
+
+  it("defines persistent pity as a guarantee after ten eligible misses", () => {
+    expect(LOOT_PITY_MISS_LIMIT).toBe(9);
+    expect(PITY_PROTECTED_ITEM_ID).toBe("material.ashen-jade-fragment");
   });
 
   it("validates injected randomness and experience input", () => {

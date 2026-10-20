@@ -60,6 +60,7 @@ databaseSuite("durable progression and personal reward grants", () => {
       userId,
       characterId,
       archetype: "rift-stalker" as const,
+      enemyLevel: 2,
       random: () => 0,
     };
     const [first, replay] = await Promise.all([
@@ -146,6 +147,7 @@ databaseSuite("durable progression and personal reward grants", () => {
       userId,
       characterId,
       archetype: "rift-stalker",
+      enemyLevel: 2,
       random: () => 0,
     });
     expect(result).toMatchObject({
@@ -160,6 +162,158 @@ databaseSuite("durable progression and personal reward grants", () => {
     );
     expect(saved.rows[0]).toEqual({ level: 2, experience: "4110" });
   });
+  it("applies level-difference diminishing returns to persisted XP only", async () => {
+    const { userId, characterId } = await createCharacter();
+    await pool.query(
+      "UPDATE characters SET experience = 142100, level = 30 WHERE id = $1",
+      [characterId],
+    );
+    const eventKey = `enemy:trivial:${randomUUID()}`;
+    const result = await grantEnemyDefeatRewards(pool, {
+      eventKey,
+      userId,
+      characterId,
+      archetype: "rift-stalker",
+      enemyLevel: 2,
+      random: () => 0,
+    });
+    expect(result).toMatchObject({
+      experience: 6,
+      silver: 3,
+      level: 30,
+      totalExperience: 142106,
+    });
+    const claim = await pool.query<{ experience_awarded: number }>(
+      "SELECT experience_awarded FROM character_reward_claims WHERE event_key = $1",
+      [eventKey],
+    );
+    expect(Number(claim.rows[0]?.experience_awarded)).toBe(6);
+    const wallet = await pool.query<{ balance: string }>(
+      "SELECT balance FROM currency_wallets WHERE user_id = $1 AND currency_code = 'silver'",
+      [userId],
+    );
+    expect(wallet.rows[0]?.balance).toBe("3");
+  });
+
+  it("guarantees the protected fragment after ten misses and resets pity on a drop", async () => {
+    const { userId, characterId } = await createCharacter();
+    for (let index = 0; index < 9; index += 1) {
+      const result = await grantEnemyDefeatRewards(pool, {
+        eventKey: `enemy:pity-miss:${index}:${randomUUID()}`,
+        userId,
+        characterId,
+        archetype: "rift-stalker",
+        enemyLevel: 2,
+        random: () => 0.5,
+      });
+      expect(result.loot).toEqual([]);
+    }
+    const misses = await pool.query<{ consecutive_misses: number }>(
+      "SELECT consecutive_misses FROM character_loot_pity WHERE character_id = $1",
+      [characterId],
+    );
+    expect(misses.rows[0]?.consecutive_misses).toBe(9);
+
+    const guaranteed = await grantEnemyDefeatRewards(pool, {
+      eventKey: `enemy:pity-guarantee:${randomUUID()}`,
+      userId,
+      characterId,
+      archetype: "rift-stalker",
+      enemyLevel: 2,
+      random: () => 0.5,
+    });
+    expect(guaranteed.loot).toEqual([
+      { itemId: "material.ashen-jade-fragment", quantity: 1, tradeable: true },
+    ]);
+    const reset = await pool.query<{ consecutive_misses: number }>(
+      "SELECT consecutive_misses FROM character_loot_pity WHERE character_id = $1",
+      [characterId],
+    );
+    expect(reset.rows[0]?.consecutive_misses).toBe(0);
+    const items = await pool.query(
+      "SELECT id FROM item_instances WHERE owner_character_id = $1 AND definition_id = 'material.ashen-jade-fragment'",
+      [characterId],
+    );
+    expect(items.rowCount).toBe(1);
+  });
+
+  it("does not advance pity when a duplicate event is replayed concurrently", async () => {
+    const { userId, characterId } = await createCharacter();
+    for (let index = 0; index < 8; index += 1) {
+      await grantEnemyDefeatRewards(pool, {
+        eventKey: `enemy:pity-prior:${index}:${randomUUID()}`,
+        userId,
+        characterId,
+        archetype: "rift-stalker",
+        enemyLevel: 2,
+        random: () => 0.5,
+      });
+    }
+    const eventKey = `enemy:pity-duplicate:${randomUUID()}`;
+    const input = {
+      eventKey,
+      userId,
+      characterId,
+      archetype: "rift-stalker" as const,
+      enemyLevel: 2,
+      random: () => 0.5,
+    };
+    const [first, replay] = await Promise.all([
+      grantEnemyDefeatRewards(pool, input),
+      grantEnemyDefeatRewards(pool, input),
+    ]);
+    expect([first.granted, replay.granted].sort()).toEqual([false, true]);
+    const state = await pool.query<{ consecutive_misses: number }>(
+      "SELECT consecutive_misses FROM character_loot_pity WHERE character_id = $1",
+      [characterId],
+    );
+    expect(state.rows[0]?.consecutive_misses).toBe(9);
+    const claims = await pool.query(
+      "SELECT id FROM character_reward_claims WHERE event_key = $1 AND character_id = $2",
+      [eventKey, characterId],
+    );
+    expect(claims.rowCount).toBe(1);
+  });
+
+  it("rolls back pity, claims, and rewards if loot materialization fails", async () => {
+    const { userId, characterId } = await createCharacter();
+    const eventKey = `enemy:pity-rollback:${randomUUID()}`;
+    await pool.query(
+      "UPDATE item_definitions SET tradeable = false WHERE id = 'material.ashen-jade-fragment' AND content_version = 1",
+    );
+    try {
+      await expect(
+        grantEnemyDefeatRewards(pool, {
+          eventKey,
+          userId,
+          characterId,
+          archetype: "rift-stalker",
+          enemyLevel: 2,
+          random: () => 0,
+        }),
+      ).rejects.toThrow("REWARD_ITEM_TRADEABILITY_MISMATCH");
+    } finally {
+      await pool.query(
+        "UPDATE item_definitions SET tradeable = true WHERE id = 'material.ashen-jade-fragment' AND content_version = 1",
+      );
+    }
+    const state = await pool.query(
+      "SELECT character_id FROM character_loot_pity WHERE character_id = $1",
+      [characterId],
+    );
+    const claim = await pool.query(
+      "SELECT id FROM character_reward_claims WHERE event_key = $1 AND character_id = $2",
+      [eventKey, characterId],
+    );
+    const inventory = await pool.query(
+      "SELECT id FROM item_instances WHERE owner_character_id = $1 AND definition_id = 'material.ashen-jade-fragment'",
+      [characterId],
+    );
+    expect(state.rowCount).toBe(0);
+    expect(claim.rowCount).toBe(0);
+    expect(inventory.rowCount).toBe(0);
+  });
+
   it("refuses a reward grant for a character not owned by the supplied user", async () => {
     const { characterId } = await createCharacter();
     await expect(
@@ -168,6 +322,7 @@ databaseSuite("durable progression and personal reward grants", () => {
         userId: randomUUID(),
         characterId,
         archetype: "ashen-wisp",
+        enemyLevel: 1,
         random: () => 0,
       }),
     ).rejects.toThrow("REWARD_CHARACTER_NOT_FOUND");
