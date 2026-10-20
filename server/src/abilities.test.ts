@@ -145,6 +145,62 @@ describe("server-authoritative class abilities", () => {
       }).damage,
     ).toBe(20);
   });
+  it("supports the complete eight-class launch roster with server-owned abilities", () => {
+    const classAbilities = [
+      {
+        classId: "blade_dancer",
+        primary: "flowing-edge",
+        primaryDamage: 30,
+        secondary: "eclipse-flurry",
+        secondaryDamage: 48,
+      },
+      {
+        classId: "spear_saint",
+        primary: "sky-piercer",
+        primaryDamage: 28,
+        secondary: "dragon-lance",
+        secondaryDamage: 50,
+      },
+      {
+        classId: "shadow_adept",
+        primary: "veil-cut",
+        primaryDamage: 34,
+        secondary: "nightfall",
+        secondaryDamage: 58,
+      },
+      {
+        classId: "storm_caller",
+        primary: "thunder-lance",
+        primaryDamage: 24,
+        secondary: "tempest-ring",
+        secondaryDamage: 46,
+      },
+      {
+        classId: "iron_fist",
+        primary: "rising-palm",
+        primaryDamage: 30,
+        secondary: "earthbreaker",
+        secondaryDamage: 50,
+      },
+    ];
+    for (const entry of classAbilities) {
+      const abilities: Array<[string, number]> = [
+        [entry.primary, entry.primaryDamage],
+        [entry.secondary, entry.secondaryDamage],
+      ];
+      for (const [abilityId, damage] of abilities) {
+        expect(
+          resolveAbility({
+            actor: actor({ classId: entry.classId, resource: 100 }),
+            target: enemy(),
+            abilityId,
+            nowMs: 1000,
+            lastUsedAtMs: 0,
+          }),
+        ).toMatchObject({ accepted: true, damage });
+      }
+    }
+  });
   it("heals only a living same-faction player and clamps to max health", () => {
     const player = actor({
       classId: "support",

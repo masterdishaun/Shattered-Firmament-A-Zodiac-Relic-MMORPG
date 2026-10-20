@@ -33,6 +33,7 @@ var reconnect_enabled := false
 var reconnect_in_progress := false
 var reconnect_attempts := 0
 const MAX_RECONNECT_ATTEMPTS := 5
+const CHARACTER_ARCHETYPES_FILE := "res://../shared/fixtures/character-archetypes.json"
 var reconnect_timer: Timer
 var intentional_disconnect := false
 
@@ -127,13 +128,9 @@ func _build_panel() -> void:
 	_add_label(stack, "CREATE CHARACTER")
 	character_name_input = _add_input(stack, "Character name")
 	class_select = OptionButton.new()
-	for entry in [
-		{"label": "Vanguard", "id": "vanguard"},
-		{"label": "Mystic", "id": "mystic"},
-		{"label": "Spirit Warden", "id": "support"}
-	]:
-		class_select.add_item(entry["label"])
-		class_select.set_item_metadata(class_select.item_count - 1, entry["id"])
+	for entry in _load_class_options():
+		class_select.add_item(String(entry["label"]))
+		class_select.set_item_metadata(class_select.item_count - 1, String(entry["id"]))
 	stack.add_child(class_select)
 
 	faction_select = OptionButton.new()
@@ -165,6 +162,29 @@ func _build_panel() -> void:
 	status_label.add_theme_color_override("font_color", Color(0.72, 0.84, 0.86))
 	stack.add_child(status_label)
 	_add_button(stack, "Close Panel", func() -> void: close_requested.emit())
+
+
+func _load_class_options() -> Array[Dictionary]:
+	var options: Array[Dictionary] = []
+	var file := FileAccess.open(CHARACTER_ARCHETYPES_FILE, FileAccess.READ)
+	if file != null:
+		var parsed: Variant = JSON.parse_string(file.get_as_text())
+		if parsed is Array:
+			for entry in parsed:
+				if entry is Dictionary and not String(entry.get("id", "")).is_empty():
+					options.append({"label": String(entry.get("displayName", entry["id"])), "id": String(entry["id"])})
+	if options.is_empty():
+		options = [
+			{"label": "Vanguard", "id": "vanguard"},
+			{"label": "Blade Dancer", "id": "blade_dancer"},
+			{"label": "Spear Saint", "id": "spear_saint"},
+			{"label": "Shadow Adept", "id": "shadow_adept"},
+			{"label": "Astral Mystic", "id": "mystic"},
+			{"label": "Spirit Warden", "id": "support"},
+			{"label": "Storm Caller", "id": "storm_caller"},
+			{"label": "Iron Fist", "id": "iron_fist"}
+		]
+	return options
 
 
 func _add_label(parent: VBoxContainer, value: String) -> void:

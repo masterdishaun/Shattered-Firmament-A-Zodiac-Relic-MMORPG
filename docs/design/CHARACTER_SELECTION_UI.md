@@ -45,5 +45,5 @@ Deliver a cinematic character-selection and creation surface for Shattered Firma
 
 ## Known limits
 
-- The current fixture has three implemented server archetypes. The UI reads the fixture dynamically, so the locked eight-class launch roster can be added through canonical content without redesigning the layout; those additional server-supported archetypes are not yet present in this branch.
-- Character mesh, cloth, hair, face, animations, lighting polish, controller navigation, localization, and appearance persistence remain future presentation/content work. The current preview is a primitive blockout. Appearance options are not yet saved to character records; account, class, faction, roster, and world-entry flow use the existing authenticated API.
+- The canonical fixture now contains the eight approved launch classes. The legacy internal IDs `mystic` and `support` are retained for the Astral Mystic and Spirit Warden to avoid breaking existing character records. The current ability resolver gives all eight classes two server-owned abilities, but specialized stagger, area-of-effect, and interruption effects still need a later combat pass.
+- Character mesh, cloth, hair, face, animations, lighting polish, controller navigation, localization, and appearance persistence remain future presentation/content work. The current preview is a primitive blockout and starting equipment remains a shared training item. Appearance options are not yet saved to character records; account, class, faction, roster, and world-entry flow use the existing authenticated API.

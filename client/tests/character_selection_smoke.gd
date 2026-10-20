@@ -15,8 +15,13 @@ func _run() -> void:
 	assert(ui.find_child("Faction_ashen_syndicate", true, false) != null, "Ashen faction card must exist")
 	assert(ui.find_child("Faction_astral_concord", true, false) != null, "Astral faction card must exist")
 	assert(ui.find_child("Class_vanguard", true, false) != null, "Vanguard card must exist")
-	assert(ui.find_child("Class_mystic", true, false) != null, "Mystic card must exist")
+	assert(ui.find_child("Class_blade_dancer", true, false) != null, "Blade Dancer card must exist")
+	assert(ui.find_child("Class_spear_saint", true, false) != null, "Spear Saint card must exist")
+	assert(ui.find_child("Class_shadow_adept", true, false) != null, "Shadow Adept card must exist")
+	assert(ui.find_child("Class_mystic", true, false) != null, "Astral Mystic card must exist")
 	assert(ui.find_child("Class_support", true, false) != null, "Spirit Warden card must exist")
+	assert(ui.find_child("Class_storm_caller", true, false) != null, "Storm Caller card must exist")
+	assert(ui.find_child("Class_iron_fist", true, false) != null, "Iron Fist card must exist")
 	assert(ui.find_child("CharacterViewport", true, false) != null, "3D preview viewport must exist")
 	assert(ui.find_child("SettingsButton", true, false) != null, "Settings control must exist")
 	assert(ui.find_child("MuteButton", true, false) != null, "Mute toggle must exist")
@@ -49,7 +54,7 @@ func _run() -> void:
 	roster.select(0)
 	ui.call("_on_existing_character_selected", 0)
 	ui.call("_select_faction", 1)
-	ui.call("_select_class", 2)
+	ui.call("_select_class", 5)
 	ui.call("_on_presentation_changed", 0)
 	ui.call("_on_body_type_changed", 2)
 
@@ -82,6 +87,8 @@ func _run() -> void:
 	]}
 	network_panel.call("_on_request_completed", HTTPRequest.RESULT_SUCCESS, 200, PackedStringArray(), JSON.stringify(response).to_utf8_buffer())
 	assert(loaded_rosters.size() == 1, "Authenticated panel must publish the loaded roster")
+	var class_select := network_panel.get("class_select") as OptionButton
+	assert(class_select.item_count == 8, "Authenticated panel must expose all eight canonical classes")
 	var server_roster_select := network_panel.get("character_select") as OptionButton
 	assert(server_roster_select.selected == 1, "Newly created character must be selected by server-returned ID")
 	assert(String(network_panel.get("preferred_character_id")).is_empty(), "Preferred ID must be consumed once")

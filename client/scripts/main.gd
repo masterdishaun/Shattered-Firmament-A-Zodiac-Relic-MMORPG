@@ -259,12 +259,17 @@ func _request_class_ability(secondary: bool) -> void:
 	var ability_id := ""
 	match current_character_class_id:
 		"vanguard": ability_id = "iron-breaker" if secondary else "jade-strike"
+		"blade_dancer": ability_id = "eclipse-flurry" if secondary else "flowing-edge"
+		"spear_saint": ability_id = "dragon-lance" if secondary else "sky-piercer"
+		"shadow_adept": ability_id = "nightfall" if secondary else "veil-cut"
 		"mystic": ability_id = "starfall" if secondary else "astral-bolt"
 		"support":
 			if not secondary:
 				network_panel.send_ability("spirit-mend", active_character_id)
 				return
 			ability_id = "resonant-pulse"
+		"storm_caller": ability_id = "tempest-ring" if secondary else "thunder-lance"
+		"iron_fist": ability_id = "earthbreaker" if secondary else "rising-palm"
 	var target_id := _nearest_enemy_id(8.0)
 	if target_id.is_empty():
 		feedback_label.text = "No Ashen Wisp in ability range. Explore the Ashen Frontier."

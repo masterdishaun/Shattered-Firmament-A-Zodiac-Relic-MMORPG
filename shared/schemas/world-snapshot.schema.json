@@ -40,7 +40,16 @@
               "name": { "type": "string", "minLength": 1, "maxLength": 24 },
               "classId": {
                 "type": "string",
-                "enum": ["vanguard", "mystic", "support"]
+                "enum": [
+                  "vanguard",
+                  "blade_dancer",
+                  "spear_saint",
+                  "shadow_adept",
+                  "mystic",
+                  "support",
+                  "storm_caller",
+                  "iron_fist"
+                ]
               },
               "mapId": {
                 "type": "string",

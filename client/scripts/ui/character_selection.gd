@@ -81,8 +81,13 @@ func _load_class_catalog() -> void:
 	if file == null:
 		class_catalog = [
 			{"id": "vanguard", "displayName": "Vanguard", "role": "vanguard"},
-			{"id": "mystic", "displayName": "Mystic", "role": "mystic"},
-			{"id": "support", "displayName": "Spirit Warden", "role": "support"}
+			{"id": "blade_dancer", "displayName": "Blade Dancer", "role": "striker"},
+			{"id": "spear_saint", "displayName": "Spear Saint", "role": "bruiser"},
+			{"id": "shadow_adept", "displayName": "Shadow Adept", "role": "assassin"},
+			{"id": "mystic", "displayName": "Astral Mystic", "role": "mystic"},
+			{"id": "support", "displayName": "Spirit Warden", "role": "support"},
+			{"id": "storm_caller", "displayName": "Storm Caller", "role": "ranger"},
+			{"id": "iron_fist", "displayName": "Iron Fist", "role": "disruptor"}
 		]
 		return
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
@@ -476,9 +481,14 @@ func _build_class_column(parent: HBoxContainer) -> void:
 
 func _class_subtitle(role: String) -> String:
 	match role.to_lower():
-		"vanguard": return "FRONTLINE  /  RESILIENCE"
-		"mystic": return "ARCANE  /  BURST"
-		"support": return "WARDING  /  RESTORATION"
+		"vanguard": return "TANK  /  PROTECTION"
+		"striker": return "MELEE  /  MOBILITY"
+		"bruiser": return "REACH  /  CROWD CONTROL"
+		"assassin": return "STEALTH  /  BURST"
+		"mystic": return "RANGED  /  ASTRAL MAGIC"
+		"support": return "HEALING  /  WARDING"
+		"ranger": return "RANGED  /  AREA CONTROL"
+		"disruptor": return "STAGGER  /  DISRUPTION"
 		_: return role.to_upper().replace("_", " ") + "  /  COMBAT DISCIPLINE"
 
 
@@ -497,13 +507,18 @@ func _select_class(index: int) -> void:
 		var accent: Color = FACTIONS[selected_faction_index]["accent"]
 		class_buttons[i].add_theme_stylebox_override("normal", _style(Color("#192338") if selected else Color("#101723"), accent if selected else FRAME, 2 if selected else 1, 8))
 	var entry: Dictionary = class_catalog[selected_class_index]
-	var role := String(entry.get("role", "combat"))
+	var class_id := String(entry.get("id", "vanguard"))
 	var descriptions := {
-		"vanguard": "A resilient frontline discipline that holds ground and breaks enemy formations.",
-		"mystic": "A spirit-focused striker who shapes astral force into precise, devastating attacks.",
-		"support": "A restorative guardian who protects allies and stabilises the flow of battle."
+		"vanguard": "A protective frontline anchor built to absorb pressure and hold the line.",
+		"blade_dancer": "A mobile melee specialist who chains precise cuts into fluid bursts of damage.",
+		"spear_saint": "A reach-focused bruiser who controls space and breaks enemy formations.",
+		"shadow_adept": "An elusive assassin who converts timing and positioning into explosive single-target damage.",
+		"mystic": "The Astral Mystic channels distant celestial force into precise ranged spells.",
+		"support": "The Spirit Warden heals allies and steadies the team through dangerous encounters.",
+		"storm_caller": "A ranged storm-weaver who pressures groups with sweeping elemental force.",
+		"iron_fist": "A close-range disruptor whose heavy strikes are built around stagger and interruption."
 	}
-	class_description.text = String(descriptions.get(role, "A distinct combat discipline. Your class does not restrict your faction or appearance."))
+	class_description.text = String(descriptions.get(class_id, "A distinct combat discipline. Your class does not restrict your faction or appearance."))
 	_update_preview()
 
 
@@ -577,17 +592,29 @@ func _update_preview() -> void:
 	if preview_weapon != null:
 		var weapon_mesh: PrimitiveMesh
 		match class_id:
+			"spear_saint":
+				var spear := BoxMesh.new()
+				spear.size = Vector3(0.055, 1.55, 0.07)
+				weapon_mesh = spear
 			"mystic":
 				var staff := CylinderMesh.new()
 				staff.top_radius = 0.045
 				staff.bottom_radius = 0.07
 				staff.height = 1.25
 				weapon_mesh = staff
-			"support":
+			"support", "storm_caller":
 				var focus := SphereMesh.new()
-				focus.radius = 0.18
-				focus.height = 0.36
+				focus.radius = 0.18 if class_id == "support" else 0.14
+				focus.height = 0.36 if class_id == "support" else 0.28
 				weapon_mesh = focus
+			"shadow_adept":
+				var dagger := BoxMesh.new()
+				dagger.size = Vector3(0.055, 0.58, 0.08)
+				weapon_mesh = dagger
+			"iron_fist":
+				var gauntlet := BoxMesh.new()
+				gauntlet.size = Vector3(0.2, 0.25, 0.18)
+				weapon_mesh = gauntlet
 			_:
 				var blade := BoxMesh.new()
 				blade.size = Vector3(0.07, 1.05, 0.12)
@@ -597,7 +624,7 @@ func _update_preview() -> void:
 		var weapon_material := preview_weapon.material_override as StandardMaterial3D
 		if weapon_material != null:
 			weapon_material.albedo_color = faction["highlight"]
-			weapon_material.emission_enabled = class_id == "mystic" or class_id == "support"
+			weapon_material.emission_enabled = class_id in ["mystic", "support", "storm_caller"]
 			weapon_material.emission = faction["accent"]
 			weapon_material.emission_energy_multiplier = 0.6
 

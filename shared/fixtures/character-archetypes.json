@@ -18,8 +18,62 @@
     "startingEquipmentIds": ["weapon.training-jade-blade"]
   },
   {
+    "id": "blade_dancer",
+    "displayName": "Blade Dancer",
+    "role": "striker",
+    "availableFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "baseStats": {
+      "health": 92,
+      "attack": 15,
+      "defence": 4,
+      "spirit": 8
+    },
+    "startingSkillIds": ["skill.flowing-edge"],
+    "startingEquipmentIds": ["weapon.training-jade-blade"]
+  },
+  {
+    "id": "spear_saint",
+    "displayName": "Spear Saint",
+    "role": "bruiser",
+    "availableFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "baseStats": {
+      "health": 115,
+      "attack": 12,
+      "defence": 6,
+      "spirit": 5
+    },
+    "startingSkillIds": ["skill.sky-piercer"],
+    "startingEquipmentIds": ["weapon.training-jade-blade"]
+  },
+  {
+    "id": "shadow_adept",
+    "displayName": "Shadow Adept",
+    "role": "assassin",
+    "availableFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "baseStats": {
+      "health": 82,
+      "attack": 17,
+      "defence": 3,
+      "spirit": 7
+    },
+    "startingSkillIds": ["skill.veil-cut"],
+    "startingEquipmentIds": ["weapon.training-jade-blade"]
+  },
+  {
     "id": "mystic",
-    "displayName": "Mystic",
+    "displayName": "Astral Mystic",
     "role": "mystic",
     "availableFactionIds": [
       "sovereign_sect",
@@ -51,6 +105,42 @@
       "spirit": 14
     },
     "startingSkillIds": ["skill.restorative-pulse"],
+    "startingEquipmentIds": ["weapon.training-jade-blade"]
+  },
+  {
+    "id": "storm_caller",
+    "displayName": "Storm Caller",
+    "role": "ranger",
+    "availableFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "baseStats": {
+      "health": 90,
+      "attack": 12,
+      "defence": 4,
+      "spirit": 13
+    },
+    "startingSkillIds": ["skill.thunder-lance"],
+    "startingEquipmentIds": ["weapon.training-jade-blade"]
+  },
+  {
+    "id": "iron_fist",
+    "displayName": "Iron Fist",
+    "role": "disruptor",
+    "availableFactionIds": [
+      "sovereign_sect",
+      "ashen_syndicate",
+      "astral_concord"
+    ],
+    "baseStats": {
+      "health": 125,
+      "attack": 11,
+      "defence": 9,
+      "spirit": 3
+    },
+    "startingSkillIds": ["skill.rising-palm"],
     "startingEquipmentIds": ["weapon.training-jade-blade"]
   }
 ]

@@ -28,7 +28,15 @@ export interface ConsumedJoinTicket {
     id: string;
     name: string;
     level: number;
-    classId: "vanguard" | "mystic" | "support";
+    classId:
+      | "vanguard"
+      | "blade_dancer"
+      | "spear_saint"
+      | "shadow_adept"
+      | "mystic"
+      | "support"
+      | "storm_caller"
+      | "iron_fist";
     factionId: "sovereign_sect" | "ashen_syndicate" | "astral_concord";
     mapId: string;
     position: { x: number; y: number; facing: number };
@@ -85,7 +93,15 @@ export async function consumeJoinTicket(
       character_status: string;
       name: string;
       level: number;
-      class_id: "vanguard" | "mystic" | "support";
+      class_id:
+        | "vanguard"
+        | "blade_dancer"
+        | "spear_saint"
+        | "shadow_adept"
+        | "mystic"
+        | "support"
+        | "storm_caller"
+        | "iron_fist";
       active_map_id: string;
       faction_id: "sovereign_sect" | "ashen_syndicate" | "astral_concord";
       position_x: number;
